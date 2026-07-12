@@ -68,7 +68,10 @@ def fetch_product_categories():
     return mapping
 
 
-def build_report(date_str):
+def build_report(date_str, product_categories=None):
+    """product_categories: pass a preloaded fetch_product_categories() result
+    when building many days in a row (the backfill), so the whole product
+    catalog isn't re-fetched once per day."""
     rules = settings.load_category_rules()
     fallback_rate = rules.get("vat_fallback_rate", 0.11)
     merge_map = {}
@@ -78,7 +81,8 @@ def build_report(date_str):
     exclude = set(rules.get("woocommerce_exclude") or [])
 
     orders = fetch_all_orders(date_str)
-    product_categories = fetch_product_categories()
+    if product_categories is None:
+        product_categories = fetch_product_categories()
 
     sale_orders = [o for o in orders if o["status"] in SALE_STATUSES]
 
