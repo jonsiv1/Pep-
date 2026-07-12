@@ -3,11 +3,35 @@
     {
       "combined": {
         "categories": {
+          "Bar": {
+            "excl_vat": 35981.98,
+            "incl_vat": 39940.0,
+            "qty": 22,
+            "vat": 3958.02
+          },
           "Barnamatse\u00f0ill": {
             "excl_vat": 3603.6,
             "incl_vat": 4000.0,
             "qty": 2,
             "vat": 396.4
+          },
+          "Beer in cans/bottles": {
+            "excl_vat": 26756.76,
+            "incl_vat": 29700.0,
+            "qty": 23,
+            "vat": 2943.24
+          },
+          "Cocktails": {
+            "excl_vat": 30450.45,
+            "incl_vat": 33800.0,
+            "qty": 12,
+            "vat": 3349.55
+          },
+          "Coffee & Tea": {
+            "excl_vat": 6711.71,
+            "incl_vat": 7450.0,
+            "qty": 13,
+            "vat": 738.29
           },
           "Eftirr\u00e9ttir": {
             "excl_vat": 5405.41,
@@ -15,34 +39,744 @@
             "qty": 3,
             "vat": 594.59
           },
+          "Fast Access": {
+            "excl_vat": 63108.11,
+            "incl_vat": 70050.0,
+            "qty": 32,
+            "vat": 6941.89
+          },
+          "Happy Hour": {
+            "excl_vat": 70200.0,
+            "incl_vat": 77922.0,
+            "qty": 78,
+            "vat": 7722.0
+          },
+          "Juice": {
+            "excl_vat": 4585.59,
+            "incl_vat": 5090.0,
+            "qty": 16,
+            "vat": 504.41
+          },
+          "Long & Spritz Drinks": {
+            "excl_vat": 38423.42,
+            "incl_vat": 42650.0,
+            "qty": 20,
+            "vat": 4226.58
+          },
           "Me\u00f0l\u00e6ti": {
             "excl_vat": 14234.23,
             "incl_vat": 15800.0,
             "qty": 6,
             "vat": 1565.77
           },
+          "On Tap - Large": {
+            "excl_vat": 193333.33,
+            "incl_vat": 214600.0,
+            "qty": 147,
+            "vat": 21266.67
+          },
+          "On Tap - Small": {
+            "excl_vat": 10180.18,
+            "incl_vat": 11300.0,
+            "qty": 13,
+            "vat": 1119.82
+          },
+          "Other Drinks": {
+            "excl_vat": 9054.05,
+            "incl_vat": 10050.0,
+            "qty": 20,
+            "vat": 995.95
+          },
           "Pizza": {
             "excl_vat": 250387.39,
             "incl_vat": 277930.0,
             "qty": 74,
             "vat": 27542.61
+          },
+          "Pizzas": {
+            "excl_vat": 1239729.73,
+            "incl_vat": 1376100.0,
+            "qty": 411,
+            "vat": 136370.27
+          },
+          "Red Wine": {
+            "excl_vat": 7747.75,
+            "incl_vat": 8600.0,
+            "qty": 5,
+            "vat": 852.25
+          },
+          "Sauces": {
+            "excl_vat": 1891.89,
+            "incl_vat": 2100.0,
+            "qty": 7,
+            "vat": 208.11
+          },
+          "Shots": {
+            "excl_vat": 101171.17,
+            "incl_vat": 112300.0,
+            "qty": 82,
+            "vat": 11128.83
+          },
+          "Soda 2L": {
+            "excl_vat": 9189.19,
+            "incl_vat": 10200.0,
+            "qty": 15,
+            "vat": 1010.81
+          },
+          "Soda 330ml": {
+            "excl_vat": 63945.95,
+            "incl_vat": 70980.0,
+            "qty": 169,
+            "vat": 7034.05
+          },
+          "Sparkling Wine": {
+            "excl_vat": 1576.58,
+            "incl_vat": 1750.0,
+            "qty": 1,
+            "vat": 173.42
+          },
+          "Sparkling alcoholic drinks": {
+            "excl_vat": 35270.27,
+            "incl_vat": 39150.0,
+            "qty": 29,
+            "vat": 3879.73
+          },
+          "Whiskey 4cl": {
+            "excl_vat": 1891.89,
+            "incl_vat": 2100.0,
+            "qty": 1,
+            "vat": 208.11
+          },
+          "White Wine": {
+            "excl_vat": 10448.65,
+            "incl_vat": 11598.0,
+            "qty": 8,
+            "vat": 1149.35
           }
         },
         "order_count": 28,
-        "total_excl_vat": 273630.63,
-        "total_incl_vat": 303730.0,
-        "total_vat": 30099.37
+        "total_excl_vat": 2238180.63,
+        "total_incl_vat": 2484379.0,
+        "total_vat": 246198.37
       },
       "date": "2026-07-11",
       "dineout": {
-        "categories": {},
+        "categories": {
+          "Bar": {
+            "excl_vat": 35981.98,
+            "incl_vat": 39940.0,
+            "qty": 22,
+            "vat": 3958.02
+          },
+          "Beer in cans/bottles": {
+            "excl_vat": 26756.76,
+            "incl_vat": 29700.0,
+            "qty": 23,
+            "vat": 2943.24
+          },
+          "Cocktails": {
+            "excl_vat": 30450.45,
+            "incl_vat": 33800.0,
+            "qty": 12,
+            "vat": 3349.55
+          },
+          "Coffee & Tea": {
+            "excl_vat": 6711.71,
+            "incl_vat": 7450.0,
+            "qty": 13,
+            "vat": 738.29
+          },
+          "Fast Access": {
+            "excl_vat": 63108.11,
+            "incl_vat": 70050.0,
+            "qty": 32,
+            "vat": 6941.89
+          },
+          "Happy Hour": {
+            "excl_vat": 70200.0,
+            "incl_vat": 77922.0,
+            "qty": 78,
+            "vat": 7722.0
+          },
+          "Juice": {
+            "excl_vat": 4585.59,
+            "incl_vat": 5090.0,
+            "qty": 16,
+            "vat": 504.41
+          },
+          "Long & Spritz Drinks": {
+            "excl_vat": 38423.42,
+            "incl_vat": 42650.0,
+            "qty": 20,
+            "vat": 4226.58
+          },
+          "On Tap - Large": {
+            "excl_vat": 193333.33,
+            "incl_vat": 214600.0,
+            "qty": 147,
+            "vat": 21266.67
+          },
+          "On Tap - Small": {
+            "excl_vat": 10180.18,
+            "incl_vat": 11300.0,
+            "qty": 13,
+            "vat": 1119.82
+          },
+          "Other Drinks": {
+            "excl_vat": 9054.05,
+            "incl_vat": 10050.0,
+            "qty": 20,
+            "vat": 995.95
+          },
+          "Pizzas": {
+            "excl_vat": 1239729.73,
+            "incl_vat": 1376100.0,
+            "qty": 411,
+            "vat": 136370.27
+          },
+          "Red Wine": {
+            "excl_vat": 7747.75,
+            "incl_vat": 8600.0,
+            "qty": 5,
+            "vat": 852.25
+          },
+          "Sauces": {
+            "excl_vat": 1891.89,
+            "incl_vat": 2100.0,
+            "qty": 7,
+            "vat": 208.11
+          },
+          "Shots": {
+            "excl_vat": 101171.17,
+            "incl_vat": 112300.0,
+            "qty": 82,
+            "vat": 11128.83
+          },
+          "Soda 2L": {
+            "excl_vat": 9189.19,
+            "incl_vat": 10200.0,
+            "qty": 15,
+            "vat": 1010.81
+          },
+          "Soda 330ml": {
+            "excl_vat": 63945.95,
+            "incl_vat": 70980.0,
+            "qty": 169,
+            "vat": 7034.05
+          },
+          "Sparkling Wine": {
+            "excl_vat": 1576.58,
+            "incl_vat": 1750.0,
+            "qty": 1,
+            "vat": 173.42
+          },
+          "Sparkling alcoholic drinks": {
+            "excl_vat": 35270.27,
+            "incl_vat": 39150.0,
+            "qty": 29,
+            "vat": 3879.73
+          },
+          "Whiskey 4cl": {
+            "excl_vat": 1891.89,
+            "incl_vat": 2100.0,
+            "qty": 1,
+            "vat": 208.11
+          },
+          "White Wine": {
+            "excl_vat": 10448.65,
+            "incl_vat": 11598.0,
+            "qty": 8,
+            "vat": 1149.35
+          }
+        },
         "date": "2026-07-11",
-        "items": {},
-        "settlement_count": 0,
+        "items": {
+          "1. Me\u00f0 allt \u00e1 hreinu": {
+            "incl_vat": 27500.0,
+            "qty": 5
+          },
+          "10. J\u00e1rnkallinn": {
+            "incl_vat": 110700.0,
+            "qty": 27
+          },
+          "11. Vertu \u00fe\u00fa sj\u00e1lfur": {
+            "incl_vat": 11250.0,
+            "qty": 3
+          },
+          "12. F\u00e6 aldrei n\u00f3g af \u00fe\u00e9r": {
+            "incl_vat": 7500.0,
+            "qty": 2
+          },
+          "13. Hj\u00e1lpa\u00f0u m\u00e9r upp": {
+            "incl_vat": 67500.0,
+            "qty": 18
+          },
+          "14. Enginn m\u00f3rall": {
+            "incl_vat": 48750.0,
+            "qty": 13
+          },
+          "15. Pamela": {
+            "incl_vat": 98750.0,
+            "qty": 25
+          },
+          "16. Vor \u00cd Vaglask\u00f3gi": {
+            "incl_vat": 15000.0,
+            "qty": 4
+          },
+          "17. M\u00e9r er drull": {
+            "incl_vat": 56250.0,
+            "qty": 15
+          },
+          "18. Fimm \u00e1 richter": {
+            "incl_vat": 37500.0,
+            "qty": 10
+          },
+          "19. Margarita": {
+            "incl_vat": 178750.0,
+            "qty": 65
+          },
+          "2. Orginal": {
+            "incl_vat": 78100.0,
+            "qty": 22
+          },
+          "20. Kids pizza (6\")": {
+            "incl_vat": 56000.0,
+            "qty": 28
+          },
+          "3. Fallegi smi\u00f0urinn": {
+            "incl_vat": 87600.0,
+            "qty": 24
+          },
+          "4. Stella \u00ed orlofi": {
+            "incl_vat": 80000.0,
+            "qty": 20
+          },
+          "5. \u00cd \u00e1tt a\u00f0 tunglinu (calzone)": {
+            "incl_vat": 31950.0,
+            "qty": 9
+          },
+          "6. \u00cd bl\u00e1um skugga": {
+            "incl_vat": 7500.0,
+            "qty": 2
+          },
+          "7-UP": {
+            "incl_vat": 7140.0,
+            "qty": 17
+          },
+          "7-UP 2L": {
+            "incl_vat": 1360.0,
+            "qty": 2
+          },
+          "7. Esjan": {
+            "incl_vat": 62700.0,
+            "qty": 19
+          },
+          "8. V\u00f6\u00f0vast\u00e6ltur": {
+            "incl_vat": 128700.0,
+            "qty": 33
+          },
+          "9. B.O.B.A": {
+            "incl_vat": 24600.0,
+            "qty": 6
+          },
+          "Americano": {
+            "incl_vat": 620.0,
+            "qty": 1
+          },
+          "Appels\u00edn": {
+            "incl_vat": 5040.0,
+            "qty": 12
+          },
+          "Appels\u00edn Sugarfree": {
+            "incl_vat": 1680.0,
+            "qty": 4
+          },
+          "Apple Juice": {
+            "incl_vat": 2160.0,
+            "qty": 8
+          },
+          "BAGL": {
+            "incl_vat": 6750.0,
+            "qty": 5
+          },
+          "Baileys'": {
+            "incl_vat": 1350.0,
+            "qty": 1
+          },
+          "Banana": {
+            "incl_vat": 0.0,
+            "qty": 1
+          },
+          "Bara Yellow": {
+            "incl_vat": 1350.0,
+            "qty": 1
+          },
+          "Beer flight": {
+            "incl_vat": 4000.0,
+            "qty": 1
+          },
+          "Blue Vodka 42": {
+            "incl_vat": 59400.0,
+            "qty": 44
+          },
+          "Boli 330 ML": {
+            "incl_vat": 1350.0,
+            "qty": 1
+          },
+          "Brenniv\u00edn": {
+            "incl_vat": 12000.0,
+            "qty": 8
+          },
+          "Buffet-Simple pizzas": {
+            "incl_vat": 79800.0,
+            "qty": 28
+          },
+          "Caf\u00e9 Latte": {
+            "incl_vat": 1380.0,
+            "qty": 2
+          },
+          "Camembert breadsticks": {
+            "incl_vat": 14000.0,
+            "qty": 5
+          },
+          "Cappuccino": {
+            "incl_vat": 1380.0,
+            "qty": 2
+          },
+          "Chai Latte": {
+            "incl_vat": 680.0,
+            "qty": 1
+          },
+          "Cheese breadsticks": {
+            "incl_vat": 28050.0,
+            "qty": 11
+          },
+          "Coca Cola": {
+            "incl_vat": 23940.0,
+            "qty": 57
+          },
+          "Coca Cola 2L": {
+            "incl_vat": 1360.0,
+            "qty": 2
+          },
+          "Coke Zero": {
+            "incl_vat": 11340.0,
+            "qty": 27
+          },
+          "Coke Zero 2L": {
+            "incl_vat": 4760.0,
+            "qty": 7
+          },
+          "Double shot in energy drink": {
+            "incl_vat": 18200.0,
+            "qty": 7
+          },
+          "Double shot in soda": {
+            "incl_vat": 20400.0,
+            "qty": 8
+          },
+          "Egils Gull Lite 330 ml": {
+            "incl_vat": 17550.0,
+            "qty": 13
+          },
+          "Espresso": {
+            "incl_vat": 2480.0,
+            "qty": 4
+          },
+          "Extra espresso shot": {
+            "incl_vat": 200.0,
+            "qty": 2
+          },
+          "Garlic bread": {
+            "incl_vat": 28050.0,
+            "qty": 11
+          },
+          "Ginger Beer": {
+            "incl_vat": 2250.0,
+            "qty": 5
+          },
+          "Glass - Apple Juice": {
+            "incl_vat": 1520.0,
+            "qty": 4
+          },
+          "Glass - El Circo Chardonay": {
+            "incl_vat": 9600.0,
+            "qty": 6
+          },
+          "Glass - El Circo Tempranillo": {
+            "incl_vat": 6400.0,
+            "qty": 4
+          },
+          "Glass - Orange Juice": {
+            "incl_vat": 760.0,
+            "qty": 2
+          },
+          "Glass - Pineapple Juice": {
+            "incl_vat": 380.0,
+            "qty": 1
+          },
+          "Glass - Sparkling Wine": {
+            "incl_vat": 1750.0,
+            "qty": 1
+          },
+          "Glass - XO Cortez": {
+            "incl_vat": 2200.0,
+            "qty": 1
+          },
+          "Grapefruit lemonade": {
+            "incl_vat": 2700.0,
+            "qty": 6
+          },
+          "Happy Hour - White Wine": {
+            "incl_vat": 1998.0,
+            "qty": 2
+          },
+          "Happy Hour Cocktail": {
+            "incl_vat": 1990.0,
+            "qty": 1
+          },
+          "Highland Blush": {
+            "incl_vat": 2950.0,
+            "qty": 1
+          },
+          "Hot chocolate": {
+            "incl_vat": 710.0,
+            "qty": 1
+          },
+          "Icelandic Spritz": {
+            "incl_vat": 10600.0,
+            "qty": 4
+          },
+          "Jameson Caskmate Stout 4cl": {
+            "incl_vat": 2100.0,
+            "qty": 1
+          },
+          "J\u00e4germester": {
+            "incl_vat": 11200.0,
+            "qty": 8
+          },
+          "Ketchup": {
+            "incl_vat": 600.0,
+            "qty": 2
+          },
+          "Kristall": {
+            "incl_vat": 7560.0,
+            "qty": 18
+          },
+          "Kristall sparkling water with lime": {
+            "incl_vat": 2520.0,
+            "qty": 6
+          },
+          "LOV": {
+            "incl_vat": 8100.0,
+            "qty": 6
+          },
+          "Mojito": {
+            "incl_vat": 8850.0,
+            "qty": 3
+          },
+          "Moscow Mule": {
+            "incl_vat": 14700.0,
+            "qty": 7
+          },
+          "Non-alcoholic Beer": {
+            "incl_vat": 6800.0,
+            "qty": 8
+          },
+          "Non-alcoholic cocktail": {
+            "incl_vat": 950.0,
+            "qty": 1
+          },
+          "Nutella pizza": {
+            "incl_vat": 4000.0,
+            "qty": 2
+          },
+          "Orange juice": {
+            "incl_vat": 270.0,
+            "qty": 1
+          },
+          "P*RN": {
+            "incl_vat": 8100.0,
+            "qty": 6
+          },
+          "Paloma": {
+            "incl_vat": 11400.0,
+            "qty": 4
+          },
+          "Pepper cheese breadsticks": {
+            "incl_vat": 5600.0,
+            "qty": 2
+          },
+          "Pepsi": {
+            "incl_vat": 1680.0,
+            "qty": 4
+          },
+          "Pepsi 2L": {
+            "incl_vat": 680.0,
+            "qty": 1
+          },
+          "Pepsi Max": {
+            "incl_vat": 10080.0,
+            "qty": 24
+          },
+          "Pepsi Max 2L": {
+            "incl_vat": 2040.0,
+            "qty": 3
+          },
+          "Pizza sauce": {
+            "incl_vat": 600.0,
+            "qty": 2
+          },
+          "Red Bull": {
+            "incl_vat": 4200.0,
+            "qty": 7
+          },
+          "STD": {
+            "incl_vat": 8100.0,
+            "qty": 6
+          },
+          "Single shot in soda": {
+            "incl_vat": 31450.0,
+            "qty": 17
+          },
+          "Smirnoff Ice": {
+            "incl_vat": 1350.0,
+            "qty": 1
+          },
+          "Somersby Apple": {
+            "incl_vat": 5400.0,
+            "qty": 4
+          },
+          "Strawberries": {
+            "incl_vat": 0.0,
+            "qty": 1
+          },
+          "Tap 1": {
+            "incl_vat": 24975.0,
+            "qty": 25
+          },
+          "Tap 1 Large -Boli Premium": {
+            "incl_vat": 94250.0,
+            "qty": 65
+          },
+          "Tap 1 Small - Boli Premium": {
+            "incl_vat": 850.0,
+            "qty": 1
+          },
+          "Tap 10": {
+            "incl_vat": 6993.0,
+            "qty": 7
+          },
+          "Tap 10 Large": {
+            "incl_vat": 17500.0,
+            "qty": 10
+          },
+          "Tap 10 Small": {
+            "incl_vat": 2000.0,
+            "qty": 2
+          },
+          "Tap 2": {
+            "incl_vat": 14985.0,
+            "qty": 15
+          },
+          "Tap 2 Large - Gull Lite": {
+            "incl_vat": 46400.0,
+            "qty": 32
+          },
+          "Tap 2 Small - Gull Lite": {
+            "incl_vat": 2550.0,
+            "qty": 3
+          },
+          "Tap 3": {
+            "incl_vat": 7992.0,
+            "qty": 8
+          },
+          "Tap 3 Large - Galdur": {
+            "incl_vat": 13500.0,
+            "qty": 10
+          },
+          "Tap 3 Small - Galdur": {
+            "incl_vat": 800.0,
+            "qty": 1
+          },
+          "Tap 4": {
+            "incl_vat": 999.0,
+            "qty": 1
+          },
+          "Tap 4 Large": {
+            "incl_vat": 4200.0,
+            "qty": 3
+          },
+          "Tap 5": {
+            "incl_vat": 10989.0,
+            "qty": 11
+          },
+          "Tap 5 Large": {
+            "incl_vat": 25200.0,
+            "qty": 18
+          },
+          "Tap 5 Small": {
+            "incl_vat": 1700.0,
+            "qty": 2
+          },
+          "Tap 6": {
+            "incl_vat": 3996.0,
+            "qty": 4
+          },
+          "Tap 6 Large": {
+            "incl_vat": 2800.0,
+            "qty": 2
+          },
+          "Tap 6 Small": {
+            "incl_vat": 3400.0,
+            "qty": 4
+          },
+          "Tap 7": {
+            "incl_vat": 4995.0,
+            "qty": 5
+          },
+          "Tap 7 Large": {
+            "incl_vat": 5600.0,
+            "qty": 4
+          },
+          "Tap 8 Large": {
+            "incl_vat": 1450.0,
+            "qty": 1
+          },
+          "Tap 9": {
+            "incl_vat": 1998.0,
+            "qty": 2
+          },
+          "Tap 9 Large": {
+            "incl_vat": 3700.0,
+            "qty": 2
+          },
+          "Tequila Los Tres Tonos": {
+            "incl_vat": 28350.0,
+            "qty": 21
+          },
+          "Tonic water": {
+            "incl_vat": 900.0,
+            "qty": 2
+          },
+          "Vegan Garlic Aioli": {
+            "incl_vat": 900.0,
+            "qty": 3
+          },
+          "Vodka Red Bull": {
+            "incl_vat": 37000.0,
+            "qty": 20
+          },
+          "Vodka Redbull": {
+            "incl_vat": 27950.0,
+            "qty": 13
+          }
+        },
+        "settlement_count": 1,
         "source": "dineout",
-        "total_excl_vat": 0.0,
-        "total_incl_vat": 0.0,
-        "total_vat": 0.0
+        "total_excl_vat": 1964550.0,
+        "total_incl_vat": 2180649.0,
+        "total_vat": 216099.0
       },
       "woocommerce": {
         "categories": {
