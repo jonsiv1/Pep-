@@ -146,8 +146,16 @@ def send_email(subject, html_body):
     msg["To"] = ", ".join(settings.EMAIL_TO)
     msg.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.starttls()
+    # Port 465 is implicit TLS (connect already encrypted); 587/25 use STARTTLS
+    # (plain connection, then upgrade) - most cPanel-style mail hosts use 465.
+    if settings.SMTP_PORT == 465:
+        server_cm = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+    else:
+        server_cm = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+
+    with server_cm as server:
+        if settings.SMTP_PORT != 465:
+            server.starttls()
         server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.sendmail(settings.EMAIL_FROM, settings.EMAIL_TO, msg.as_string())
 
