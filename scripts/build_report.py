@@ -226,13 +226,13 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
   <tr><td class="pad" style="{section_pad}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td width="50%" style="border-right:1px solid {LINE};padding-right:18px;">
-          <div style="{label_style}">RESTAURANT (DINEOUT)</div>
+        <td width="50%" valign="top" style="border-right:1px solid {LINE};padding-right:18px;">
+          <div style="{label_style}">DINEOUT</div>
           <div style="color:{INK};font-size:21px;padding-top:6px;white-space:nowrap;{DISPLAY}">{isk(dineout['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
         </td>
-        <td width="50%" style="padding-left:18px;">
-          <div style="{label_style}">WEBSHOP</div>
+        <td width="50%" valign="top" style="padding-left:18px;">
+          <div style="{label_style}">ONLINE</div>
           <div style="color:{INK};font-size:21px;padding-top:6px;white-space:nowrap;{DISPLAY}">{isk(wc['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{wc['order_count']} orders</div>
         </td>
