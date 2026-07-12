@@ -211,10 +211,15 @@ def scrape_day(date_str):
             # domcontentloaded (not the default "load") so we don't wait on
             # trackers/polling that may never go idle; then wait specifically
             # for the field we need, which is what actually matters here.
+            # The form is Material-UI: "Email address"/"Password" are floating
+            # <label>s, not native placeholders, so get_by_label (which
+            # resolves the label->input association) is used instead of a
+            # placeholder-based CSS selector, which never matched anything.
             page.goto(sel["login_url"], wait_until="domcontentloaded")
-            page.wait_for_selector(sel["username_selector"], timeout=45000)
-            page.fill(sel["username_selector"], settings.DINEOUT_USERNAME)
-            page.fill(sel["password_selector"], settings.DINEOUT_PASSWORD)
+            email_field = page.get_by_label(sel["username_label"])
+            email_field.wait_for(state="visible", timeout=45000)
+            email_field.fill(settings.DINEOUT_USERNAME)
+            page.get_by_label(sel["password_label"]).fill(settings.DINEOUT_PASSWORD)
             page.click(sel["submit_selector"])
             page.wait_for_selector(sel["login_success_selector"], timeout=20000)
 
