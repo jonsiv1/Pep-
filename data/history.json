@@ -1,3 +1,165 @@
 {
-  "daily": []
+  "daily": [
+    {
+      "combined": {
+        "categories": {
+          "Barnamatse\u00f0ill": {
+            "excl_vat": 3603.6,
+            "incl_vat": 4000.0,
+            "qty": 2,
+            "vat": 396.4
+          },
+          "Eftirr\u00e9ttir": {
+            "excl_vat": 5405.41,
+            "incl_vat": 6000.0,
+            "qty": 3,
+            "vat": 594.59
+          },
+          "Me\u00f0l\u00e6ti": {
+            "excl_vat": 14234.23,
+            "incl_vat": 15800.0,
+            "qty": 6,
+            "vat": 1565.77
+          },
+          "Pizza": {
+            "excl_vat": 250387.39,
+            "incl_vat": 277930.0,
+            "qty": 74,
+            "vat": 27542.61
+          }
+        },
+        "order_count": 28,
+        "total_excl_vat": 273630.63,
+        "total_incl_vat": 303730.0,
+        "total_vat": 30099.37
+      },
+      "date": "2026-07-11",
+      "dineout": {
+        "categories": {},
+        "date": "2026-07-11",
+        "items": {},
+        "settlement_count": 0,
+        "source": "dineout",
+        "total_excl_vat": 0.0,
+        "total_incl_vat": 0.0,
+        "total_vat": 0.0
+      },
+      "woocommerce": {
+        "categories": {
+          "Barnamatse\u00f0ill": {
+            "excl_vat": 3603.6,
+            "incl_vat": 4000.0,
+            "qty": 2,
+            "vat": 396.4
+          },
+          "Eftirr\u00e9ttir": {
+            "excl_vat": 5405.41,
+            "incl_vat": 6000.0,
+            "qty": 3,
+            "vat": 594.59
+          },
+          "Me\u00f0l\u00e6ti": {
+            "excl_vat": 14234.23,
+            "incl_vat": 15800.0,
+            "qty": 6,
+            "vat": 1565.77
+          },
+          "Pizza": {
+            "excl_vat": 250387.39,
+            "incl_vat": 277930.0,
+            "qty": 74,
+            "vat": 27542.61
+          }
+        },
+        "date": "2026-07-11",
+        "items": {
+          "Barnapizza": {
+            "incl_vat": 4000.0,
+            "qty": 2
+          },
+          "Enginn m\u00f3rall": {
+            "incl_vat": 7500.0,
+            "qty": 2
+          },
+          "Esjan": {
+            "incl_vat": 12940.0,
+            "qty": 4
+          },
+          "Fallegi smi\u00f0urinn": {
+            "incl_vat": 33250.0,
+            "qty": 9
+          },
+          "Fimm \u00e1 richter": {
+            "incl_vat": 3750.0,
+            "qty": 1
+          },
+          "F\u00e6 Aldrei N\u00f3g Af \u00de\u00e9r": {
+            "incl_vat": 5850.0,
+            "qty": 1
+          },
+          "Hv\u00edtlauksbrau\u00f0": {
+            "incl_vat": 5100.0,
+            "qty": 2
+          },
+          "J\u00e1rnkallinn": {
+            "incl_vat": 8200.0,
+            "qty": 2
+          },
+          "Margar\u00edta": {
+            "incl_vat": 41470.0,
+            "qty": 13
+          },
+          "Me\u00f0 allt \u00e1 hreinu": {
+            "incl_vat": 5950.0,
+            "qty": 1
+          },
+          "M\u00e9r er drull": {
+            "incl_vat": 37900.0,
+            "qty": 10
+          },
+          "Nutella pizza": {
+            "incl_vat": 6000.0,
+            "qty": 3
+          },
+          "Orginal": {
+            "incl_vat": 14200.0,
+            "qty": 4
+          },
+          "Ostabrau\u00f0stangir": {
+            "incl_vat": 5100.0,
+            "qty": 2
+          },
+          "Pamela": {
+            "incl_vat": 3950.0,
+            "qty": 1
+          },
+          "Piparostabrau\u00f0stangir": {
+            "incl_vat": 5600.0,
+            "qty": 2
+          },
+          "Stella \u00ed Orlofi": {
+            "incl_vat": 20000.0,
+            "qty": 5
+          },
+          "Vertu \u00fe\u00fa sj\u00e1lfur": {
+            "incl_vat": 16700.0,
+            "qty": 4
+          },
+          "V\u00f6\u00f0vast\u00e6ltur": {
+            "incl_vat": 62720.0,
+            "qty": 16
+          },
+          "\u00cd \u00e1tt a\u00f0 tunglinu": {
+            "incl_vat": 3550.0,
+            "qty": 1
+          }
+        },
+        "order_count": 28,
+        "source": "woocommerce",
+        "total_excl_vat": 273630.63,
+        "total_incl_vat": 303730.0,
+        "total_vat": 30099.37
+      }
+    }
+  ]
 }
