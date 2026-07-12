@@ -74,69 +74,193 @@ def pct_change(current, previous):
     return round(((current - previous) / previous) * 100, 1)
 
 
+# Email-safe palette: warm paper background, dark ink, one pizza-oven accent.
+INK = "#221C16"
+INK_SOFT = "#6E635A"
+INK_FAINT = "#9C9186"
+PAPER = "#F2EDE6"
+CARD = "#FFFFFF"
+LINE = "#E7DFD4"
+ACCENT = "#B3401F"       # pizza-oven red, dark enough for white text on top
+ACCENT_DEEP = "#8F3010"
+GOOD = "#1a7f37"
+BAD = "#cf222e"
+
+FONT = "font-family:Arial,Helvetica,sans-serif;"
+
+
+def _pizzas_qty(day_record):
+    if not day_record:
+        return None
+    return day_record["combined"]["categories"].get("Pizzas", {}).get("qty")
+
+
+def _chip(label, pct):
+    """Small pill showing a % change vs a named period."""
+    if pct is None:
+        return (f"<span style='display:inline-block;background:{PAPER};color:{INK_FAINT};"
+                f"border-radius:12px;padding:4px 12px;font-size:12px;{FONT}'>{label}: no data</span>")
+    color = GOOD if pct >= 0 else BAD
+    arrow = "&#9650;" if pct >= 0 else "&#9660;"
+    return (f"<span style='display:inline-block;background:{PAPER};color:{color};font-weight:bold;"
+            f"border-radius:12px;padding:4px 12px;font-size:12px;{FONT}'>"
+            f"{arrow} {abs(pct)}% <span style='color:{INK_FAINT};font-weight:normal'>{label}</span></span>")
+
+
 def render_email_html(date_str, wc, dineout, combined, history, items):
-    yesterday = (datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-    last_week = (datetime.strptime(date_str, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    nice_date = f"{dt:%A} {dt.day}. {dt:%B %Y}"
+    yesterday = (dt - timedelta(days=1)).strftime("%Y-%m-%d")
+    last_week = (dt - timedelta(days=7)).strftime("%Y-%m-%d")
     prev_day = find_day(history, yesterday)
     prev_week = find_day(history, last_week)
 
     vs_yesterday = pct_change(combined["total_incl_vat"], prev_day["combined"]["total_incl_vat"]) if prev_day else None
     vs_last_week = pct_change(combined["total_incl_vat"], prev_week["combined"]["total_incl_vat"]) if prev_week else None
 
-    def trend(pct):
-        if pct is None:
-            return "<span style='color:#888'>no data</span>"
-        color = "#1a7f37" if pct >= 0 else "#cf222e"
-        arrow = "▲" if pct >= 0 else "▼"
-        return f"<span style='color:{color}'>{arrow} {abs(pct)}%</span>"
+    pizzas = combined["categories"].get("Pizzas", {}).get("qty", 0)
+    pizzas_last_week = _pizzas_qty(prev_week)
+    pizzas_vs_week = pct_change(pizzas, pizzas_last_week) if pizzas_last_week else None
+    if pizzas_vs_week is not None:
+        pz_color = "#C9E5C9" if pizzas_vs_week >= 0 else "#F5C6BC"
+        pz_arrow = "&#9650;" if pizzas_vs_week >= 0 else "&#9660;"
+        pizza_delta = (f"<div style='color:{pz_color};font-size:13px;padding-top:6px;{FONT}'>"
+                       f"{pz_arrow} {abs(pizzas_vs_week)}% vs. last {dt:%A}</div>")
+    else:
+        pizza_delta = ""
 
     category_rows = "".join(
-        f"<tr><td>{name}</td><td style='text-align:right'>{vals['qty']}</td>"
-        f"<td style='text-align:right'>{vals['excl_vat']:,.0f} kr</td>"
-        f"<td style='text-align:right'>{vals['vat']:,.0f} kr</td>"
-        f"<td style='text-align:right'>{vals['incl_vat']:,.0f} kr</td></tr>"
+        f"<tr>"
+        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-size:14px;{FONT}'>{name}</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['qty']}</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['excl_vat']:,.0f}</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['vat']:,.0f}</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-weight:bold;font-size:14px;{FONT}'>{vals['incl_vat']:,.0f}</td>"
+        f"</tr>"
         for name, vals in sorted(combined["categories"].items(), key=lambda kv: -kv[1]["incl_vat"])
     )
 
     item_rows = "".join(
-        f"<tr><td>{name}</td><td style='text-align:right'>{vals['qty']}</td>"
-        f"<td style='text-align:right'>{vals['incl_vat']:,.0f} kr</td></tr>"
-        for name, vals in items
+        f"<tr>"
+        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK_FAINT};font-size:14px;width:24px;{FONT}'>{rank}</td>"
+        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-size:14px;{FONT}'>{name}</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['qty']}&#215;</td>"
+        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-weight:bold;font-size:14px;{FONT}'>{vals['incl_vat']:,.0f} kr</td>"
+        f"</tr>"
+        for rank, (name, vals) in enumerate(items, start=1)
     )
 
-    return f"""
-    <html><body style="font-family:Arial,sans-serif;color:#222;max-width:640px;margin:auto">
-      <h2 style="margin-bottom:4px">Daily sales report - {date_str}</h2>
-      <p style="color:#666;margin-top:0">WooCommerce + DineOut, combined</p>
+    card_open = (f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+                 f"style='background:{CARD};border-radius:14px;'><tr><td style='padding:22px 26px;'>")
+    card_close = "</td></tr></table>"
+    gap = "<div style='height:14px;line-height:14px;'>&nbsp;</div>"
 
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-        <tr><td style="padding:6px 0">Total (incl. VAT)</td><td style="text-align:right;font-weight:bold">{combined['total_incl_vat']:,.0f} kr</td></tr>
-        <tr><td style="padding:6px 0">Total (excl. VAT)</td><td style="text-align:right">{combined['total_excl_vat']:,.0f} kr</td></tr>
-        <tr><td style="padding:6px 0">VAT collected</td><td style="text-align:right">{combined['total_vat']:,.0f} kr</td></tr>
-        <tr><td style="padding:6px 0">WooCommerce orders</td><td style="text-align:right">{wc['order_count']}</td></tr>
-        <tr><td style="padding:6px 0">vs. yesterday</td><td style="text-align:right">{trend(vs_yesterday)}</td></tr>
-        <tr><td style="padding:6px 0">vs. same day last week</td><td style="text-align:right">{trend(vs_last_week)}</td></tr>
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin:0;padding:0;background:{PAPER};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PAPER};">
+<tr><td align="center" style="padding:28px 14px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+  <tr><td style="padding:0 6px 16px;">
+    <div style="color:{ACCENT};font-size:12px;letter-spacing:3px;font-weight:bold;{FONT}">ASKUR TAPROOM &amp; PIZZERIA</div>
+    <div style="color:{INK};font-size:24px;font-weight:bold;padding-top:4px;{FONT}">Daily sales report</div>
+    <div style="color:{INK_SOFT};font-size:14px;padding-top:2px;{FONT}">{nice_date}</div>
+  </td></tr>
+
+  <tr><td>
+    {card_open}
+      <div align="center" style="text-align:center;">
+        <div style="color:{INK_FAINT};font-size:12px;letter-spacing:2px;font-weight:bold;{FONT}">TOTAL SALES</div>
+        <div style="color:{INK};font-size:48px;font-weight:bold;line-height:1.1;padding:10px 0 4px;{FONT}">{combined['total_incl_vat']:,.0f} kr</div>
+        <div style="color:{INK_SOFT};font-size:13px;padding-bottom:14px;{FONT}">
+          {combined['total_excl_vat']:,.0f} kr excl. VAT &nbsp;&#183;&nbsp; {combined['total_vat']:,.0f} kr VAT
+        </div>
+        <div>{_chip("vs. yesterday", vs_yesterday)} &nbsp; {_chip("vs. last " + f"{dt:%A}", vs_last_week)}</div>
+      </div>
+    {card_close}
+  </td></tr>
+
+  <tr><td>{gap}</td></tr>
+
+  <tr><td>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{ACCENT};border-radius:14px;">
+      <tr><td style="padding:20px 26px;" align="center">
+        <div style="color:#F5D9CE;font-size:12px;letter-spacing:2px;font-weight:bold;{FONT}">&#127829; PIZZAS SOLD</div>
+        <div style="color:#FFFFFF;font-size:40px;font-weight:bold;line-height:1.1;padding-top:6px;{FONT}">{pizzas}</div>
+        {pizza_delta}
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <tr><td>{gap}</td></tr>
+
+  <tr><td>
+    {card_open}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" style="border-right:1px solid {LINE};padding-right:16px;">
+            <div style="color:{INK_FAINT};font-size:12px;letter-spacing:1px;font-weight:bold;{FONT}">RESTAURANT (DINEOUT)</div>
+            <div style="color:{INK};font-size:22px;font-weight:bold;padding-top:4px;{FONT}">{dineout['total_incl_vat']:,.0f} kr</div>
+            <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{FONT}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
+          </td>
+          <td width="50%" style="padding-left:16px;">
+            <div style="color:{INK_FAINT};font-size:12px;letter-spacing:1px;font-weight:bold;{FONT}">WEBSHOP</div>
+            <div style="color:{INK};font-size:22px;font-weight:bold;padding-top:4px;{FONT}">{wc['total_incl_vat']:,.0f} kr</div>
+            <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{FONT}">{wc['order_count']} orders</div>
+          </td>
+        </tr>
       </table>
+    {card_close}
+  </td></tr>
 
-      <h3>By category</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr style="border-bottom:1px solid #ccc"><th style="text-align:left">Category</th><th style="text-align:right">Qty</th><th style="text-align:right">Excl. VAT</th><th style="text-align:right">VAT</th><th style="text-align:right">Incl. VAT</th></tr>
+  <tr><td>{gap}</td></tr>
+
+  <tr><td>
+    {card_open}
+      <div style="color:{INK};font-size:16px;font-weight:bold;padding-bottom:12px;{FONT}">By category</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">CATEGORY</td>
+          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">QTY</td>
+          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">EXCL. VAT</td>
+          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">VAT</td>
+          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">INCL. VAT</td>
+        </tr>
         {category_rows}
       </table>
+    {card_close}
+  </td></tr>
 
-      <h3>Top-selling items</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr style="border-bottom:1px solid #ccc"><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Sales (incl. VAT)</th></tr>
+  <tr><td>{gap}</td></tr>
+
+  <tr><td>
+    {card_open}
+      <div style="color:{INK};font-size:16px;font-weight:bold;padding-bottom:12px;{FONT}">Top sellers</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         {item_rows}
       </table>
+    {card_close}
+  </td></tr>
 
-      <p style="color:#999;font-size:12px;margin-top:24px">
-        VAT is taken from source data where available; a fallback 11% rate is applied where no
-        tax figure was recorded. DineOut "Toppings" are excluded from the category breakdown;
-        Sides, Desserts and Baby Pizza are folded into "Pizzas".
-      </p>
-    </body></html>
-    """
+  <tr><td style="padding:20px 8px 0;">
+    <div style="color:{INK_FAINT};font-size:11px;line-height:1.5;{FONT}">
+      Day totals use each system's real VAT figures where available; an 11% fallback applies where
+      no tax was recorded (webshop orders, and category-level splits). Pizza modifiers/toppings are
+      excluded from the category counts; sides, desserts, kids menu and buffets count as pizzas.
+      Settlements closed before 06:00 belong to the previous business day.
+    </div>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>"""
 
 
 def send_email(subject, html_body):
@@ -183,7 +307,9 @@ def run(date_str, send_report_email=True):
 
     if send_report_email:
         html = render_email_html(date_str, wc, dineout, combined, history, items)
-        send_email(f"Sales report - {date_str}", html)
+        pizzas = combined["categories"].get("Pizzas", {}).get("qty", 0)
+        subject = f"\U0001F355 {date_str}: {combined['total_incl_vat']:,.0f} kr · {pizzas} pizzas"
+        send_email(subject, html)
 
 
 if __name__ == "__main__":
