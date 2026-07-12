@@ -20,6 +20,7 @@ import tempfile
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import pdfplumber
 from playwright.sync_api import sync_playwright
@@ -77,6 +78,16 @@ def business_date_for(created_date, created_time):
     hour = int(created_time.split(":")[0])
     d = datetime.strptime(created_date, "%Y-%m-%d").date()
     if hour < CUTOFF_HOUR:
+        d -= timedelta(days=1)
+    return d.isoformat()
+
+
+def business_date_from_iso(created_iso):
+    """'2026-03-29T21:17:04...' -> business date, applying the before-06:00
+    rule. DineOut timestamps are Iceland time = UTC year-round."""
+    dt = datetime.fromisoformat(created_iso.replace("Z", "+00:00"))
+    d = dt.date()
+    if dt.hour < CUTOFF_HOUR:
         d -= timedelta(days=1)
     return d.isoformat()
 
@@ -291,6 +302,140 @@ def build_day_report(date_str, parsed_settlements, merge_map, fallback_rate):
     }
 
 
+# ---------------------------------------------------------------------------
+# Data-integrity cross-check against the POS order log.
+#
+# Settlements say WHEN the till was closed, not when the sales happened - an
+# unsettled till lumps two days into one settlement (observed on ~25 days over
+# 18 months). Orders carry their own timestamps, so summing the order log for
+# the same business day gives an independent total to compare against.
+#
+# The orders API (GET api.dineout.is/api/partner/OrderReport/filter, bearer
+# auth, date-filter query params - confirmed by recon) is driven by rewriting
+# the app's own captured request URL, so no query parameter names are
+# hardcoded or persisted.
+# ---------------------------------------------------------------------------
+
+_DATE_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
+_PAGE_SIZE_PARAM_NAMES = {"take", "limit", "pagesize", "size", "top", "rows", "perpage", "count"}
+_SKIP_PARAM_NAMES = {"skip", "offset", "start"}
+CHECK_TOLERANCE_PCT = 5.0
+CHECK_MIN_TOTAL = 10000  # ignore mismatch noise below this many kr
+
+
+def _set_query_param(url, name, value):
+    parts = urlsplit(url)
+    params = [(k, str(value) if k == name else v) for k, v in parse_qsl(parts.query, keep_blank_values=True)]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(params), parts.fragment))
+
+
+def _rewrite_for_day(url, day):
+    """Rewrite every date-valued query param to `day`, keeping any time
+    suffix (from=2026-07-13T00:00 -> from=<day>T00:00). Also raises any
+    recognizable page-size param to 500. Returns (url, found_dates)."""
+    parts = urlsplit(url)
+    out, found_dates = [], False
+    for k, v in parse_qsl(parts.query, keep_blank_values=True):
+        if _DATE_PREFIX_RE.match(v):
+            out.append((k, day + v[10:]))
+            found_dates = True
+        elif k.lower() in _PAGE_SIZE_PARAM_NAMES and v.isdigit():
+            out.append((k, "500"))
+        else:
+            out.append((k, v))
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(out), parts.fragment)), found_dates
+
+
+def _order_value_key(item):
+    for key in ("totalPaid", "total", "totalAmount", "amount"):
+        if key in item:
+            return key
+    return None
+
+
+def _fetch_calendar_day_orders(context, template_url, auth, day):
+    """All order items for one calendar day, following skip-style pagination."""
+    url, found_dates = _rewrite_for_day(template_url, day)
+    if not found_dates:
+        raise RuntimeError("no date-valued query params found in captured orders request")
+
+    skip_param = next(
+        (k for k, _ in parse_qsl(urlsplit(url).query) if k.lower() in _SKIP_PARAM_NAMES), None
+    )
+    items = []
+    for _ in range(40):
+        resp = context.request.get(url if not items else _set_query_param(url, skip_param, len(items)),
+                                   headers={"authorization": auth}, timeout=60000)
+        if resp.status != 200:
+            raise RuntimeError(f"orders API HTTP {resp.status}")
+        body = resp.json()
+        result = body.get("result") or {}
+        page_items = result.get("result") or []
+        hits = result.get("hits", len(page_items))
+        items.extend(page_items)
+        if len(items) >= hits or not page_items or skip_param is None:
+            break
+    return items
+
+
+def orders_cross_check(context, page, sel, date_str, settlement_total, settlement_count):
+    """Never raises - the report must go out even if the check can't run."""
+    try:
+        captured = {}
+
+        def on_request(request):
+            if "OrderReport/filter" in request.url and request.headers.get("authorization"):
+                captured["url"] = request.url
+                captured["auth"] = request.headers["authorization"]
+
+        page.on("request", on_request)
+        page.goto(sel["orders_report_url"])
+        page.wait_for_timeout(6000)
+        page.remove_listener("request", on_request)
+
+        if "url" not in captured:
+            return {"status": "unavailable", "reason": "orders API request not captured"}
+
+        next_day = (datetime.strptime(date_str, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+        items = []
+        for day in (date_str, next_day):
+            items.extend(_fetch_calendar_day_orders(context, captured["url"], captured["auth"], day))
+
+        orders_total, orders_counted, value_key = 0.0, 0, None
+        for item in items:
+            created = item.get("created") or item.get("designatedTime")
+            if not created or business_date_from_iso(created) != date_str:
+                continue
+            if value_key is None:
+                value_key = _order_value_key(item)
+                if value_key is None:
+                    return {"status": "unavailable",
+                            "reason": f"no total field on order items (keys: {sorted(item.keys())[:12]})"}
+            orders_total += float(item.get(value_key) or 0)
+            orders_counted += 1
+
+        result = {
+            "orders_total": round(orders_total, 2),
+            "orders_counted": orders_counted,
+            "settlement_total": round(settlement_total, 2),
+        }
+        if settlement_count == 0 and orders_total > CHECK_MIN_TOTAL:
+            result["status"] = "missing_settlement"
+        elif orders_total <= CHECK_MIN_TOTAL and settlement_total <= CHECK_MIN_TOTAL:
+            result["status"] = "ok"
+            result["delta_pct"] = 0.0
+        elif orders_total <= 0:
+            result["status"] = "unavailable"
+            result["reason"] = "order log returned no orders for this day"
+        else:
+            delta = (settlement_total - orders_total) / orders_total * 100
+            result["delta_pct"] = round(delta, 1)
+            result["status"] = "ok" if abs(delta) <= CHECK_TOLERANCE_PCT else "mismatch"
+        return result
+    except Exception as exc:
+        return {"status": "unavailable", "reason": str(exc)[:200]}
+
+
 def scrape_day(date_str):
     sel = load_selectors()
     rules = settings.load_category_rules()
@@ -306,13 +451,18 @@ def scrape_day(date_str):
             login(page, sel)
             pdf_paths = download_matching_settlements(page, sel, date_str, tmp)
             parsed = [parse_settlement_pdf(p_, fallback_rate=fallback_rate) for p_ in pdf_paths]
+            report = build_day_report(date_str, parsed, merge_map, fallback_rate)
+            report["orders_check"] = orders_cross_check(
+                context, page, sel, date_str,
+                report["total_incl_vat"], report["settlement_count"],
+            )
         except Exception:
             _save_debug(page, "failure")
             raise
         finally:
             browser.close()
 
-    return build_day_report(date_str, parsed, merge_map, fallback_rate)
+    return report
 
 
 if __name__ == "__main__":

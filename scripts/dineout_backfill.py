@@ -26,9 +26,9 @@ from playwright.sync_api import sync_playwright
 
 import settings
 from dineout_scrape import (
-    CUTOFF_HOUR,
     _save_debug,
     build_day_report,
+    business_date_from_iso,
     category_merge_map,
     load_selectors,
     login,
@@ -36,18 +36,6 @@ from dineout_scrape import (
 )
 
 FILTER_PATH_FRAGMENT = "settlementreport/filter"
-
-
-def business_date_from_iso(created_iso):
-    """'2026-03-29T21:17:04...' -> business date, applying the before-06:00
-    rule (a settlement closed early morning belongs to the previous day).
-    DineOut timestamps are Iceland time = UTC year-round."""
-    cleaned = created_iso.replace("Z", "+00:00")
-    dt = datetime.fromisoformat(cleaned)
-    d = dt.date()
-    if dt.hour < CUTOFF_HOUR:
-        d -= timedelta(days=1)
-    return d.isoformat()
 
 
 def extract_items(body):
