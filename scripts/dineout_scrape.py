@@ -154,12 +154,17 @@ def parse_settlement_pdf(pdf_path, fallback_rate=0.11):
     }
 
 
-def find_settlements_for_day(page, sel, target_date):
-    """Paginate the settlements list, return [(created_date, created_time, open_href), ...]
-    for every settlement whose corrected business date matches target_date.
+def download_matching_settlements(page, sel, target_date, tmp_dir):
+    """Paginate the settlements list; for every settlement whose corrected
+    business date matches target_date, click through to its detail page,
+    download the PDF, and come back. Returns the list of downloaded PDF paths.
+
+    The "Open" control is a plain <button> with a React click-handler - no
+    href, no id anywhere in the markup - so there's no link to collect and
+    visit later; each match has to be clicked through immediately.
     Rows are assumed newest-first, so we stop once we've paged past the target.
     """
-    matches = []
+    downloaded = []
     page.goto(sel["settlements_list_url"])
     page.wait_for_selector(sel["list_row_selector"], timeout=20000)
 
@@ -169,17 +174,34 @@ def find_settlements_for_day(page, sel, target_date):
             break
 
         oldest_business_date_seen = None
-        for row in rows:
+        matching_indices = []
+        for i, row in enumerate(rows):
             cells = row.query_selector_all(sel["list_cell_selector"])
             created_date = cells[sel["list_col_created"]].inner_text().strip()
             created_time = cells[sel["list_col_time"]].inner_text().strip()
-            link = row.query_selector(sel["list_open_link_selector"])
-            href = link.get_attribute("href") if link else None
-
             bdate = business_date_for(created_date, created_time)
             oldest_business_date_seen = bdate
-            if bdate == target_date and href:
-                matches.append(href)
+            if bdate == target_date:
+                matching_indices.append(i)
+
+        for i in matching_indices:
+            # Re-query fresh each time: after go_back() below, any handles
+            # from the loop above are stale (detached from the new DOM).
+            rows = page.query_selector_all(sel["list_row_selector"])
+            open_button = rows[i].query_selector(sel["list_open_link_selector"])
+            if not open_button:
+                continue
+            open_button.click()
+            page.wait_for_selector(sel["download_button_selector"], timeout=20000)
+            with page.expect_download() as dl_info:
+                page.click(sel["download_button_selector"])
+            download = dl_info.value
+            pdf_path = Path(tmp_dir) / download.suggested_filename
+            download.save_as(pdf_path)
+            downloaded.append(pdf_path)
+
+            page.go_back()
+            page.wait_for_selector(sel["list_row_selector"], timeout=20000)
 
         if oldest_business_date_seen and oldest_business_date_seen < target_date:
             break  # paged past the target date; rows only get older from here
@@ -190,14 +212,14 @@ def find_settlements_for_day(page, sel, target_date):
         next_button.click()
         page.wait_for_timeout(1000)
 
-    if not matches:
+    if not downloaded:
         # Found nothing for the target date - could be legitimate (no
         # settlements that day) or a parsing mismatch (wrong column index,
         # unexpected date format). Capture what the scraper actually saw so
         # this doesn't fail silently.
         _save_debug(page, "no_settlements_found")
 
-    return matches
+    return downloaded
 
 
 def scrape_day(date_str):
@@ -230,21 +252,13 @@ def scrape_day(date_str):
             page.click(sel["submit_selector"])
             page.wait_for_selector(sel["login_success_selector"], timeout=20000)
 
-            settlement_hrefs = find_settlements_for_day(page, sel, date_str)
+            pdf_paths = download_matching_settlements(page, sel, date_str, tmp)
 
             total_incl = total_vat = 0.0
             categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
             items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
 
-            for href in settlement_hrefs:
-                page.goto(href)
-                page.wait_for_selector(sel["download_button_selector"], timeout=20000)
-                with page.expect_download() as dl_info:
-                    page.click(sel["download_button_selector"])
-                download = dl_info.value
-                pdf_path = Path(tmp) / download.suggested_filename
-                download.save_as(pdf_path)
-
+            for pdf_path in pdf_paths:
                 parsed = parse_settlement_pdf(pdf_path, fallback_rate=fallback_rate)
                 total_incl += parsed["total_incl_vat"]
                 total_vat += parsed["total_vat"]
@@ -268,7 +282,7 @@ def scrape_day(date_str):
     return {
         "date": date_str,
         "source": "dineout",
-        "settlement_count": len(settlement_hrefs),
+        "settlement_count": len(pdf_paths),
         "total_incl_vat": round(total_incl, 2),
         "total_excl_vat": round(total_excl, 2),
         "total_vat": round(total_vat, 2),
