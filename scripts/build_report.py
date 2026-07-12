@@ -87,7 +87,9 @@ GOOD = "#1a6b32"
 BAD = "#b3261e"
 
 SANS = "font-family:Arial,Helvetica,sans-serif;"
-SERIF = "font-family:Georgia,'Times New Roman',serif;"
+# Display style for headings and large figures - same sans stack, bolded,
+# with slight negative tracking so big numbers hold together.
+DISPLAY = "font-weight:bold;letter-spacing:-0.5px;font-family:Arial,Helvetica,sans-serif;"
 
 # Icelandic names hardcoded - the CI runner has no is_IS locale installed.
 IS_WEEKDAYS = ["mánudagur", "þriðjudagur", "miðvikudagur", "fimmtudagur",
@@ -189,13 +191,13 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 
   <tr><td style="{section_pad}padding-bottom:20px;border-bottom:3px double {INK};">
     <div style="color:{ACCENT};font-size:12px;letter-spacing:3px;font-weight:bold;{SANS}">ASKUR TAPROOM &amp; PIZZERIA</div>
-    <div style="color:{INK};font-size:27px;padding-top:6px;{SERIF}">Daily sales report</div>
+    <div style="color:{INK};font-size:27px;padding-top:6px;{DISPLAY}">Daily sales report</div>
     <div style="color:{INK_SOFT};font-size:14px;padding-top:3px;{SANS}">{is_date_long(dt)}</div>
   </td></tr>
 
   <tr><td style="{section_pad}">
     <div style="{label_style}">TOTAL SALES</div>
-    <div style="color:{INK};font-size:46px;line-height:1.1;padding:8px 0 5px;{SERIF}">{isk(combined['total_incl_vat'])}</div>
+    <div style="color:{INK};font-size:46px;line-height:1.1;padding:8px 0 5px;{DISPLAY}">{isk(combined['total_incl_vat'])}</div>
     <div style="color:{INK_SOFT};font-size:13px;padding-bottom:10px;{SANS}">
       {isk(combined['total_excl_vat'])} excl. VAT &nbsp;&#183;&nbsp; {isk(combined['total_vat'])} VAT
     </div>
@@ -206,7 +208,7 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 
   <tr><td style="{section_pad}">
     <div style="{label_style}">PIZZAS SOLD</div>
-    <div style="color:{ACCENT};font-size:40px;line-height:1.1;padding:8px 0 5px;{SERIF}">{pizzas}</div>
+    <div style="color:{ACCENT};font-size:40px;line-height:1.1;padding:8px 0 5px;{DISPLAY}">{pizzas}</div>
     <div>{_trend(f"vs. last {weekday_en}", pizzas_vs_week)}</div>
   </td></tr>
 
@@ -217,12 +219,12 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
       <tr>
         <td width="50%" style="border-right:1px solid {LINE};padding-right:18px;">
           <div style="{label_style}">RESTAURANT (DINEOUT)</div>
-          <div style="color:{INK};font-size:21px;padding-top:6px;{SERIF}">{isk(dineout['total_incl_vat'])}</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;{DISPLAY}">{isk(dineout['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
         </td>
         <td width="50%" style="padding-left:18px;">
           <div style="{label_style}">WEBSHOP</div>
-          <div style="color:{INK};font-size:21px;padding-top:6px;{SERIF}">{isk(wc['total_incl_vat'])}</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;{DISPLAY}">{isk(wc['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{wc['order_count']} orders</div>
         </td>
       </tr>
@@ -232,7 +234,7 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
   <tr><td style="padding:0 34px;">{rule}</td></tr>
 
   <tr><td style="{section_pad}">
-    <div style="color:{INK};font-size:18px;padding-bottom:14px;{SERIF}">By category</div>
+    <div style="color:{INK};font-size:18px;padding-bottom:14px;{DISPLAY}">By category</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td style="{th}">CATEGORY</td>
@@ -248,7 +250,7 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
   <tr><td style="padding:0 34px;">{rule}</td></tr>
 
   <tr><td style="{section_pad}">
-    <div style="color:{INK};font-size:18px;padding-bottom:14px;{SERIF}">Top sellers</div>
+    <div style="color:{INK};font-size:18px;padding-bottom:14px;{DISPLAY}">Top sellers</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       {item_rows}
     </table>
