@@ -133,6 +133,41 @@ def _trend(label, pct):
             f"<span style='color:{INK_SOFT};'> {label}</span></span>")
 
 
+WARN_BG = "#F7ECD4"
+WARN_BORDER = "#DFC791"
+WARN_INK = "#6B4E0F"
+
+
+def data_check_texts(check):
+    """(banner_sentence or None, footnote_sentence). The banner appears as a
+    visible warning band; the footnote is the quiet all-clear/unavailable line."""
+    if not check:
+        return None, None
+    status = check.get("status")
+    st = check.get("settlement_total", 0)
+    ot = check.get("orders_total", 0)
+    if status == "ok":
+        return None, (f"Data check: settlement total matches the day's order log "
+                      f"(difference {is_pct(check.get('delta_pct', 0))}).")
+    if status == "unavailable":
+        return None, f"Data check unavailable: {check.get('reason', 'unknown')}."
+    if status == "missing_settlement":
+        return ((f"No settlement was recorded for this day, but the order log shows "
+                 f"{check.get('orders_counted', 0)} orders totalling {isk(ot)}. The till was likely "
+                 f"not settled - these sales will appear in the next settlement, inflating a later "
+                 f"day's report."), None)
+    if status == "mismatch":
+        delta = check.get("delta_pct", 0)
+        if delta > 0:
+            return ((f"The settlement total ({isk(st)}) is {is_pct(delta)} higher than this day's "
+                     f"order log ({isk(ot)}) - it likely includes unsettled sales from a previous "
+                     f"day. Treat this day's figures as covering more than one day."), None)
+        return ((f"The settlement total ({isk(st)}) is {is_pct(delta)} lower than this day's "
+                 f"order log ({isk(ot)}) - part of the day may not have been settled yet and "
+                 f"will appear in a later report."), None)
+    return None, None
+
+
 def render_email_html(date_str, wc, dineout, combined, history, items):
     dt = datetime.strptime(date_str, "%Y-%m-%d")
     yesterday = (dt - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -179,6 +214,21 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
     rule = f"<div style='border-top:1px solid {LINE_STRONG};font-size:0;line-height:0;'>&nbsp;</div>"
     section_pad = "padding:26px 34px;"
 
+    banner_text, footnote_text = data_check_texts(dineout.get("orders_check"))
+    check_banner = ""
+    if banner_text:
+        check_banner = f"""
+  <tr><td class="pad" style="padding:0 34px 26px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background:{WARN_BG};border:1px solid {WARN_BORDER};">
+      <tr><td style="padding:14px 18px;">
+        <div style="color:{WARN_INK};font-size:11px;letter-spacing:2px;font-weight:bold;{SANS}">DATA CHECK WARNING</div>
+        <div style="color:{WARN_INK};font-size:13px;line-height:1.5;padding-top:6px;{SANS}">{banner_text}</div>
+      </td></tr>
+    </table>
+  </td></tr>"""
+    check_footnote = f"{footnote_text} " if footnote_text else ""
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -212,7 +262,7 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
     </div>
     <div>{_trend("vs. yesterday", vs_yesterday)} &nbsp;&nbsp;&nbsp; {_trend(f"vs. last {weekday_en}", vs_last_week)}</div>
   </td></tr>
-
+{check_banner}
   <tr><td class="pad" style="padding:0 34px;">{rule}</td></tr>
 
   <tr><td class="pad" style="{section_pad}">
@@ -265,7 +315,7 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 
   <tr><td class="pad" style="{section_pad}padding-top:18px;border-top:1px solid {LINE_STRONG};">
     <div style="color:{INK_FAINT};font-size:11px;line-height:1.5;{SANS}">
-      Day totals use each system's real VAT figures where available; an 11% fallback applies where
+      {check_footnote}Day totals use each system's real VAT figures where available; an 11% fallback applies where
       no tax was recorded (webshop orders, and category-level splits). Pizza modifiers/toppings are
       excluded from the category counts; sides, desserts, kids menu and buffets count as pizzas.
       Settlements closed before 06:00 belong to the previous business day.

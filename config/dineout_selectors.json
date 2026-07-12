@@ -15,5 +15,6 @@
   "download_button_selector": "button:has-text('Download')",
   "rows_per_page_select": ".MuiTablePagination-select",
   "rows_per_page_option_100": "li[role='option']:has-text('100')",
-  "displayed_rows_selector": ".MuiTablePagination-displayedRows"
+  "displayed_rows_selector": ".MuiTablePagination-displayedRows",
+  "orders_report_url": "https://partner.dineout.is/pos/reports/orders"
 }
