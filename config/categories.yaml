@@ -1,0 +1,33 @@
+# Category consolidation rules applied when building the daily report.
+#
+# `dineout_merge_into` - DineOut categories folded into another category name.
+#   Key = destination category, value = list of source categories to merge in.
+#   Confirmed against a real Askur Taproom & Pizzeria settlement: "Sides" and
+#   "Desserts" are real, separate DineOut categories, folded into "Pizzas" here.
+#
+# Toppings/modifiers aren't excluded via a category name (DineOut files them
+# under "Pizzas" itself, mixed in with the real pizzas) - that split happens
+# in scripts/dineout_scrape.py's is_real_pizza(): numbered menu items
+# ("1. Með allt á hreinu") and anything starting with "Buffet" count as
+# pizzas; unnumbered items (Garlic, Skip ham, etc.) are modifiers and are
+# left out of the category/item breakdown (their money still counts in the
+# day's total, just isn't attributed to a category).
+
+dineout_merge_into:
+  Pizzas:
+    - Sides
+    - Desserts
+
+# WooCommerce category names are used as-is from the store. Add mappings here
+# too if you later want to consolidate WooCommerce categories the same way.
+woocommerce_merge_into: {}
+
+woocommerce_exclude: []
+
+# VAT fallback rate, used for:
+#  - WooCommerce line items with no recorded tax amount
+#  - DineOut category/item breakdowns (DineOut's PDF only gives one VAT
+#    total for the whole settlement, not per category, so category-level
+#    VAT here is an estimate - it won't tie out exactly to the settlement's
+#    real total_vat, which is used as-is for the day's overall numbers).
+vat_fallback_rate: 0.11

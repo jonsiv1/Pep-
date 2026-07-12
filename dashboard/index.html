@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Restaurant sales dashboard</title>
+<style>
+  .viz-root {
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #006300;
+    --bad:            #d03b3b;
+    --series-1:       #2a78d6; /* blue - incl VAT */
+    --series-2:       #1baf7a; /* aqua - excl VAT */
+    --series-3:       #eda100; /* yellow */
+    --series-4:       #008300; /* green */
+    --series-5:       #4a3aa7; /* violet */
+    --series-6:       #e34948; /* red */
+    --series-7:       #e87ba4; /* magenta */
+    --series-8:       #eb6834; /* orange */
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+      --bad:            #e66767;
+      --series-1:       #3987e5;
+      --series-2:       #199e70;
+      --series-3:       #c98500;
+      --series-4:       #008300;
+      --series-5:       #9085e9;
+      --series-6:       #e66767;
+      --series-7:       #d55181;
+      --series-8:       #d95926;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:var(--page); color:var(--text-primary);
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:22px;font-weight:700;margin:0 0 2px;}
+  .sub{color:var(--text-secondary);font-size:14px;margin:0 0 20px;}
+
+  .card{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+  .card + .card{margin-top:16px;}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
+  .tile .label{font-size:12px;color:var(--text-secondary);}
+  .tile .value{font-size:26px;font-weight:600;margin:4px 0 2px;}
+  .tile .delta{font-size:12.5px;}
+  .delta.up{color:var(--good);}
+  .delta.down{color:var(--bad);}
+  .delta.flat{color:var(--text-muted);}
+
+  .card-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em;}
+
+  .legend{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;}
+  .legend .item{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);}
+  .legend .swatch{width:10px;height:10px;border-radius:3px;}
+
+  .range{display:flex;gap:6px;margin-bottom:14px;}
+  .range button{font-size:12.5px;font-family:inherit;border:1px solid var(--border);background:var(--surface-1);
+    color:var(--text-secondary);padding:6px 12px;border-radius:8px;cursor:pointer;}
+  .range button.on{color:var(--text-primary);border-color:var(--series-1);background:color-mix(in srgb, var(--series-1) 10%, var(--surface-1));font-weight:600;}
+
+  svg{display:block;width:100%;height:auto;overflow:visible;}
+  .gridline{stroke:var(--grid);stroke-width:1;}
+  .baseline{stroke:var(--baseline);stroke-width:1;}
+  .axis-label{fill:var(--text-muted);font-size:10.5px;font-family:inherit;}
+  .tooltip{position:absolute;pointer-events:none;background:var(--surface-1);border:1px solid var(--border);
+    border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;white-space:nowrap;}
+  .tooltip .t-date{font-weight:600;margin-bottom:4px;}
+  .tooltip .t-row{display:flex;justify-content:space-between;gap:14px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums;}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:var(--text-secondary);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  .table-scroll{overflow-x:auto;}
+  .empty{padding:40px 10px;text-align:center;color:var(--text-secondary);font-size:14px;}
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <h1>Sales dashboard</h1>
+  <p class="sub">WooCommerce + DineOut, combined daily · updates automatically each morning</p>
+
+  <div class="card">
+    <div class="tiles" id="tiles"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Daily revenue over time</div>
+    <div class="range" id="range">
+      <button data-days="30">30d</button>
+      <button data-days="90">90d</button>
+      <button data-days="365">1y</button>
+      <button data-days="0" class="on">All</button>
+    </div>
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:var(--series-1)"></span>Incl. VAT</span>
+      <span class="item"><span class="swatch" style="background:var(--series-2)"></span>Excl. VAT</span>
+    </div>
+    <div style="position:relative">
+      <svg id="lineChart" viewBox="0 0 900 300" preserveAspectRatio="none"></svg>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Latest day by category</div>
+    <svg id="barChart" viewBox="0 0 900 260" preserveAspectRatio="none"></svg>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Daily history</div>
+    <div class="table-scroll">
+      <table id="historyTable">
+        <thead>
+          <tr><th>Date</th><th>Orders</th><th>Excl. VAT</th><th>VAT</th><th>Incl. VAT</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var fmt0 = function(n){ return Math.round(n).toLocaleString(); };
+  var svgNS = 'http://www.w3.org/2000/svg';
+
+  function el(tag, attrs){
+    var e = document.createElementNS(svgNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  fetch('../data/history.json').then(function(r){ return r.json(); }).then(function(data){
+    var days = (data.daily || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+    if (!days.length) {
+      document.querySelector('.wrap').innerHTML += '<div class="card"><div class="empty">No data yet. The first daily report will populate this dashboard.</div></div>';
+      return;
+    }
+    render(days);
+  }).catch(function(err){
+    document.querySelector('.wrap').innerHTML += '<div class="card"><div class="empty">Could not load data/history.json (' + err + ')</div></div>';
+  });
+
+  function render(days){
+    renderTiles(days);
+    var rangeDays = 0;
+    renderLineChart(days, rangeDays);
+    renderBarChart(days[days.length - 1]);
+    renderTable(days);
+
+    document.getElementById('range').querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        document.getElementById('range').querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
+        renderLineChart(days, parseInt(btn.dataset.days, 10));
+      });
+    });
+  }
+
+  function pctChange(cur, prev){
+    if (!prev) return null;
+    return ((cur - prev) / prev) * 100;
+  }
+
+  function renderTiles(days){
+    var latest = days[days.length - 1];
+    var prevDay = days.length > 1 ? days[days.length - 2] : null;
+    var weekAgo = days.find(function(d){ return d.date === shiftDate(latest.date, -7); });
+
+    var vsYesterday = prevDay ? pctChange(latest.combined.total_incl_vat, prevDay.combined.total_incl_vat) : null;
+    var vsLastWeek = weekAgo ? pctChange(latest.combined.total_incl_vat, weekAgo.combined.total_incl_vat) : null;
+
+    var tiles = [
+      { label: 'Latest day (' + latest.date + ')', value: fmt0(latest.combined.total_incl_vat) + ' kr', delta: null },
+      { label: 'Excl. VAT', value: fmt0(latest.combined.total_excl_vat) + ' kr', delta: null },
+      { label: 'VAT collected', value: fmt0(latest.combined.total_vat) + ' kr', delta: null },
+      { label: 'Orders (WooCommerce)', value: fmt0(latest.woocommerce.order_count), delta: null },
+      { label: 'vs. yesterday', value: deltaText(vsYesterday), delta: vsYesterday },
+      { label: 'vs. last week', value: deltaText(vsLastWeek), delta: vsLastWeek },
+    ];
+
+    var container = document.getElementById('tiles');
+    container.innerHTML = tiles.map(function(t){
+      var cls = t.delta == null ? 'flat' : (t.delta >= 0 ? 'up' : 'down');
+      return '<div class="tile"><div class="label">' + t.label + '</div><div class="value ' + (t.delta != null ? cls : '') + '">' + t.value + '</div></div>';
+    }).join('');
+  }
+
+  function deltaText(pct){
+    if (pct == null) return 'no data';
+    var arrow = pct >= 0 ? '▲' : '▼';
+    return arrow + ' ' + Math.abs(pct).toFixed(1) + '%';
+  }
+
+  function shiftDate(dateStr, days){
+    var d = new Date(dateStr + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function renderLineChart(allDays, rangeDays){
+    var days = rangeDays > 0 ? allDays.slice(-rangeDays) : allDays;
+    var svg = document.getElementById('lineChart');
+    svg.innerHTML = '';
+    var W = 900, H = 300, padL = 60, padR = 16, padT = 16, padB = 30;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var maxVal = Math.max.apply(null, days.map(function(d){ return d.combined.total_incl_vat; }).concat([1]));
+    var niceMax = niceCeil(maxVal);
+
+    // gridlines + y labels
+    var steps = 4;
+    for (var i = 0; i <= steps; i++) {
+      var y = padT + plotH - (plotH * i / steps);
+      svg.appendChild(el('line', { x1: padL, x2: W - padR, y1: y, y2: y, class: 'gridline' }));
+      var label = el('text', { x: padL - 8, y: y + 4, class: 'axis-label', 'text-anchor': 'end' });
+      label.textContent = fmt0(niceMax * i / steps);
+      svg.appendChild(label);
+    }
+    svg.appendChild(el('line', { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, class: 'baseline' }));
+
+    function xFor(idx){ return padL + (days.length > 1 ? (plotW * idx / (days.length - 1)) : plotW / 2); }
+    function yFor(val){ return padT + plotH - (plotH * val / niceMax); }
+
+    function drawLine(field, colorVar){
+      var pts = days.map(function(d, i){ return [xFor(i), yFor(getField(d, field))]; });
+      var path = 'M' + pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' L');
+      svg.appendChild(el('path', { d: path, fill: 'none', stroke: 'var(' + colorVar + ')', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+      var last = pts[pts.length - 1];
+      var dot = el('circle', { cx: last[0], cy: last[1], r: 5, fill: 'var(' + colorVar + ')', stroke: 'var(--surface-1)', 'stroke-width': 2 });
+      svg.appendChild(dot);
+    }
+    function getField(d, field){ return field === 'incl' ? d.combined.total_incl_vat : d.combined.total_excl_vat; }
+
+    drawLine('excl', '--series-2');
+    drawLine('incl', '--series-1');
+
+    // x-axis labels (sparse)
+    var labelEvery = Math.max(1, Math.ceil(days.length / 8));
+    days.forEach(function(d, i){
+      if (i % labelEvery !== 0 && i !== days.length - 1) return;
+      var t = el('text', { x: xFor(i), y: H - 8, class: 'axis-label', 'text-anchor': 'middle' });
+      t.textContent = d.date.slice(5);
+      svg.appendChild(t);
+    });
+
+    // hover layer
+    var hitWidth = plotW / Math.max(1, days.length - 1);
+    var tooltip = document.getElementById('tooltip');
+    days.forEach(function(d, i){
+      var hit = el('rect', { x: xFor(i) - hitWidth / 2, y: padT, width: hitWidth, height: plotH, fill: 'transparent' });
+      hit.addEventListener('mousemove', function(evt){
+        tooltip.style.display = 'block';
+        var rect = svg.getBoundingClientRect();
+        tooltip.style.left = (evt.clientX - rect.left + 12) + 'px';
+        tooltip.style.top = (evt.clientY - rect.top - 10) + 'px';
+        tooltip.innerHTML = '<div class="t-date">' + d.date + '</div>' +
+          '<div class="t-row"><span>Incl. VAT</span><span>' + fmt0(d.combined.total_incl_vat) + ' kr</span></div>' +
+          '<div class="t-row"><span>Excl. VAT</span><span>' + fmt0(d.combined.total_excl_vat) + ' kr</span></div>' +
+          '<div class="t-row"><span>Orders</span><span>' + fmt0(d.woocommerce.order_count) + '</span></div>';
+      });
+      hit.addEventListener('mouseleave', function(){ tooltip.style.display = 'none'; });
+      svg.appendChild(hit);
+    });
+  }
+
+  function niceCeil(val){
+    var mag = Math.pow(10, Math.floor(Math.log10(val || 1)));
+    var norm = val / mag;
+    var niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return niceNorm * mag;
+  }
+
+  var seriesColors = ['--series-1','--series-2','--series-3','--series-4','--series-5','--series-6','--series-7','--series-8'];
+
+  function renderBarChart(latest){
+    var svg = document.getElementById('barChart');
+    svg.innerHTML = '';
+    var cats = Object.keys(latest.combined.categories || {}).map(function(name){
+      return { name: name, value: latest.combined.categories[name].incl_vat };
+    }).sort(function(a, b){ return b.value - a.value; }).slice(0, 8);
+
+    if (!cats.length) {
+      var t = el('text', { x: 20, y: 30, class: 'axis-label' });
+      t.textContent = 'No category data for this day.';
+      svg.appendChild(t);
+      return;
+    }
+
+    var W = 900, H = 260, padL = 140, padR = 60, padT = 10, padB = 10;
+    var plotW = W - padL - padR;
+    var barH = 24, gap = 14;
+    var maxVal = Math.max.apply(null, cats.map(function(c){ return c.value; }));
+
+    cats.forEach(function(c, i){
+      var y = padT + i * (barH + gap);
+      var w = plotW * (c.value / maxVal);
+      svg.appendChild(el('rect', { x: padL, y: y, width: Math.max(w, 2), height: barH, rx: 4, fill: 'var(' + seriesColors[i % seriesColors.length] + ')' }));
+      var label = el('text', { x: padL - 10, y: y + barH / 2 + 4, class: 'axis-label', 'text-anchor': 'end' });
+      label.textContent = c.name;
+      svg.appendChild(label);
+      var val = el('text', { x: padL + w + 8, y: y + barH / 2 + 4, class: 'axis-label' });
+      val.setAttribute('fill', 'var(--text-primary)');
+      val.textContent = fmt0(c.value) + ' kr';
+      svg.appendChild(val);
+    });
+    svg.setAttribute('viewBox', '0 0 900 ' + (padT + cats.length * (barH + gap) + padB));
+  }
+
+  function renderTable(days){
+    var tbody = document.querySelector('#historyTable tbody');
+    tbody.innerHTML = days.slice().reverse().map(function(d){
+      return '<tr><td>' + d.date + '</td><td>' + fmt0(d.woocommerce.order_count) + '</td>' +
+        '<td>' + fmt0(d.combined.total_excl_vat) + ' kr</td>' +
+        '<td>' + fmt0(d.combined.total_vat) + ' kr</td>' +
+        '<td>' + fmt0(d.combined.total_incl_vat) + ' kr</td></tr>';
+    }).join('');
+  }
+})();
+</script>
+</body>
+</html>

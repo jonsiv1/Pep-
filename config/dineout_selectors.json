@@ -1,0 +1,19 @@
+{
+  "_comment": "login + URL fields are confirmed against the real DineOut Partner backend. The list_* fields are best-effort (built from screenshots, not real page source) and may need adjusting after the first real test run - see REPORTING_README.md.",
+
+  "login_url": "https://partner.dineout.is",
+  "username_selector": "input[placeholder='Email address']",
+  "password_selector": "input[placeholder='Password']",
+  "submit_selector": "button:has-text('Login')",
+  "login_success_selector": "text=Reports",
+
+  "settlements_list_url": "https://partner.dineout.is/pos/reports/settlements",
+  "list_row_selector": "table tbody tr",
+  "list_cell_selector": "td",
+  "list_col_created": 0,
+  "list_col_time": 1,
+  "list_open_link_selector": "a:has-text('Open')",
+  "list_next_page_selector": "button:has-text('Next')",
+
+  "download_button_selector": "button:has-text('Download')"
+}
