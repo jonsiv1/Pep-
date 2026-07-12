@@ -12,7 +12,7 @@
   "list_cell_selector": "td",
   "list_col_created": 0,
   "list_col_time": 1,
-  "list_open_link_selector": "a:has-text('Open')",
+  "list_open_link_selector": "button:has-text('Open')",
   "list_next_page_selector": "button:has-text('Next')",
 
   "download_button_selector": "button:has-text('Download')"
