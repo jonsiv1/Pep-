@@ -1,0 +1,18 @@
+{
+  "_comment": "PLACEHOLDER selectors - these will not work until filled in from the real DineOut backend. Log into DineOut, open browser dev tools (F12), and update the CSS selectors below to match. See README.md 'Configuring the DineOut scraper' section.",
+
+  "login_url": "https://REPLACE-ME.dineout.example/login",
+  "username_selector": "input[name='username']",
+  "password_selector": "input[name='password']",
+  "submit_selector": "button[type='submit']",
+  "login_success_selector": "body",
+
+  "report_url_template": "https://REPLACE-ME.dineout.example/reports/sales?date={date}",
+
+  "report_table_selector": "table.sales-report",
+  "report_row_selector": "table.sales-report tbody tr",
+  "row_category_selector": "td:nth-child(1)",
+  "row_item_selector": "td:nth-child(2)",
+  "row_qty_selector": "td:nth-child(3)",
+  "row_amount_incl_vat_selector": "td:nth-child(4)"
+}

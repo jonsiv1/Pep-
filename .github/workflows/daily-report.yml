@@ -1,0 +1,83 @@
+name: Daily sales report
+
+on:
+  schedule:
+    # 05:00 UTC daily = 05:00 Iceland time (Iceland has no DST, always UTC+0).
+    # Runs early morning to safely cover all of "yesterday"'s sales.
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Date to report on (YYYY-MM-DD). Leave blank for yesterday."
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      WOOCOMMERCE_URL: ${{ secrets.WOOCOMMERCE_URL }}
+      WOOCOMMERCE_CONSUMER_KEY: ${{ secrets.WOOCOMMERCE_CONSUMER_KEY }}
+      WOOCOMMERCE_CONSUMER_SECRET: ${{ secrets.WOOCOMMERCE_CONSUMER_SECRET }}
+      DINEOUT_URL: ${{ secrets.DINEOUT_URL }}
+      DINEOUT_USERNAME: ${{ secrets.DINEOUT_USERNAME }}
+      DINEOUT_PASSWORD: ${{ secrets.DINEOUT_PASSWORD }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
+      - name: Run daily report
+        working-directory: scripts
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            python build_report.py "${{ github.event.inputs.date }}"
+          else
+            python build_report.py
+          fi
+
+      - name: Commit updated history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/history.json
+          git diff --cached --quiet || git commit -m "Daily report: $(date -u +%F)"
+          git push
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: report
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

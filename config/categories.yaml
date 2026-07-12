@@ -1,0 +1,28 @@
+# Category consolidation rules applied when building the daily report.
+#
+# `dineout_exclude` - DineOut categories dropped entirely from the category
+#   breakdown (e.g. toppings are modifiers on a pizza order, not their own sale).
+# `dineout_merge_into` - DineOut categories folded into another category name.
+#   Key = destination category, value = list of source categories to merge in.
+#
+# Edit this file (no code changes needed) once you can see the real category
+# names used in your DineOut backend reports.
+
+dineout_exclude:
+  - Toppings
+
+dineout_merge_into:
+  Pizzas:
+    - Sides
+    - Desserts
+    - Baby Pizza
+
+# WooCommerce category names are used as-is from the store. Add mappings here
+# too if you later want to consolidate WooCommerce categories the same way.
+woocommerce_merge_into: {}
+
+woocommerce_exclude: []
+
+# VAT fallback rate (Iceland reduced/standard rate context) used only when a
+# line item has no explicit tax amount recorded.
+vat_fallback_rate: 0.11
