@@ -28,6 +28,23 @@ import settings
 
 SELECTORS_FILE = settings.REPO_ROOT / "config" / "dineout_selectors.json"
 
+# Screenshot + HTML dump saved here if anything in the browser session fails,
+# so a failure can be diagnosed from the workflow's uploaded artifact instead
+# of needing someone to reproduce it manually.
+DEBUG_DIR = settings.REPO_ROOT / "dineout_debug"
+
+
+def _save_debug(page, name):
+    DEBUG_DIR.mkdir(exist_ok=True)
+    try:
+        page.screenshot(path=str(DEBUG_DIR / f"{name}.png"), full_page=True)
+    except Exception:
+        pass
+    try:
+        (DEBUG_DIR / f"{name}.html").write_text(page.content())
+    except Exception:
+        pass
+
 # A settlement closed before this hour belongs to the previous business day.
 CUTOFF_HOUR = 6
 
@@ -190,41 +207,49 @@ def scrape_day(date_str):
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
 
-        page.goto(sel["login_url"])
-        page.fill(sel["username_selector"], settings.DINEOUT_USERNAME)
-        page.fill(sel["password_selector"], settings.DINEOUT_PASSWORD)
-        page.click(sel["submit_selector"])
-        page.wait_for_selector(sel["login_success_selector"], timeout=15000)
+        try:
+            # domcontentloaded (not the default "load") so we don't wait on
+            # trackers/polling that may never go idle; then wait specifically
+            # for the field we need, which is what actually matters here.
+            page.goto(sel["login_url"], wait_until="domcontentloaded")
+            page.wait_for_selector(sel["username_selector"], timeout=45000)
+            page.fill(sel["username_selector"], settings.DINEOUT_USERNAME)
+            page.fill(sel["password_selector"], settings.DINEOUT_PASSWORD)
+            page.click(sel["submit_selector"])
+            page.wait_for_selector(sel["login_success_selector"], timeout=20000)
 
-        settlement_hrefs = find_settlements_for_day(page, sel, date_str)
+            settlement_hrefs = find_settlements_for_day(page, sel, date_str)
 
-        total_incl = total_vat = 0.0
-        categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
-        items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
+            total_incl = total_vat = 0.0
+            categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
+            items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
 
-        for href in settlement_hrefs:
-            page.goto(href)
-            page.wait_for_selector(sel["download_button_selector"], timeout=20000)
-            with page.expect_download() as dl_info:
-                page.click(sel["download_button_selector"])
-            download = dl_info.value
-            pdf_path = Path(tmp) / download.suggested_filename
-            download.save_as(pdf_path)
+            for href in settlement_hrefs:
+                page.goto(href)
+                page.wait_for_selector(sel["download_button_selector"], timeout=20000)
+                with page.expect_download() as dl_info:
+                    page.click(sel["download_button_selector"])
+                download = dl_info.value
+                pdf_path = Path(tmp) / download.suggested_filename
+                download.save_as(pdf_path)
 
-            parsed = parse_settlement_pdf(pdf_path, fallback_rate=fallback_rate)
-            total_incl += parsed["total_incl_vat"]
-            total_vat += parsed["total_vat"]
-            for name, vals in parsed["categories"].items():
-                name = merge_map.get(name, name)
-                categories[name]["qty"] += vals["qty"]
-                categories[name]["incl_vat"] += vals["incl_vat"]
-                categories[name]["excl_vat"] += vals["excl_vat"]
-                categories[name]["vat"] += vals["vat"]
-            for name, vals in parsed["items"].items():
-                items[name]["qty"] += vals["qty"]
-                items[name]["incl_vat"] += vals["incl_vat"]
-
-        browser.close()
+                parsed = parse_settlement_pdf(pdf_path, fallback_rate=fallback_rate)
+                total_incl += parsed["total_incl_vat"]
+                total_vat += parsed["total_vat"]
+                for name, vals in parsed["categories"].items():
+                    name = merge_map.get(name, name)
+                    categories[name]["qty"] += vals["qty"]
+                    categories[name]["incl_vat"] += vals["incl_vat"]
+                    categories[name]["excl_vat"] += vals["excl_vat"]
+                    categories[name]["vat"] += vals["vat"]
+                for name, vals in parsed["items"].items():
+                    items[name]["qty"] += vals["qty"]
+                    items[name]["incl_vat"] += vals["incl_vat"]
+        except Exception:
+            _save_debug(page, "failure")
+            raise
+        finally:
+            browser.close()
 
     total_excl = total_incl - total_vat
 
