@@ -144,7 +144,10 @@
 
 <script>
 (function(){
-  var fmt0 = function(n){ return Math.round(n).toLocaleString(); };
+  // Icelandic formats throughout: period as thousands separator, dd.mm.yyyy dates.
+  var fmt0 = function(n){ return Math.round(n).toLocaleString('is-IS'); };
+  var fmtDateIS = function(iso){ var p = iso.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; };
+  var fmtDateShortIS = function(iso){ var p = iso.split('-'); return p[2] + '.' + p[1] + '.'; };
   var svgNS = 'http://www.w3.org/2000/svg';
 
   function el(tag, attrs){
@@ -194,7 +197,7 @@
     var vsLastWeek = weekAgo ? pctChange(latest.combined.total_incl_vat, weekAgo.combined.total_incl_vat) : null;
 
     var tiles = [
-      { label: 'Latest day (' + latest.date + ')', value: fmt0(latest.combined.total_incl_vat) + ' kr', delta: null },
+      { label: 'Latest day (' + fmtDateIS(latest.date) + ')', value: fmt0(latest.combined.total_incl_vat) + ' kr', delta: null },
       { label: 'Excl. VAT', value: fmt0(latest.combined.total_excl_vat) + ' kr', delta: null },
       { label: 'VAT collected', value: fmt0(latest.combined.total_vat) + ' kr', delta: null },
       { label: 'Orders (WooCommerce)', value: fmt0(latest.woocommerce.order_count), delta: null },
@@ -263,7 +266,7 @@
     days.forEach(function(d, i){
       if (i % labelEvery !== 0 && i !== days.length - 1) return;
       var t = el('text', { x: xFor(i), y: H - 8, class: 'axis-label', 'text-anchor': 'middle' });
-      t.textContent = d.date.slice(5);
+      t.textContent = fmtDateShortIS(d.date);
       svg.appendChild(t);
     });
 
@@ -277,7 +280,7 @@
         var rect = svg.getBoundingClientRect();
         tooltip.style.left = (evt.clientX - rect.left + 12) + 'px';
         tooltip.style.top = (evt.clientY - rect.top - 10) + 'px';
-        tooltip.innerHTML = '<div class="t-date">' + d.date + '</div>' +
+        tooltip.innerHTML = '<div class="t-date">' + fmtDateIS(d.date) + '</div>' +
           '<div class="t-row"><span>Incl. VAT</span><span>' + fmt0(d.combined.total_incl_vat) + ' kr</span></div>' +
           '<div class="t-row"><span>Excl. VAT</span><span>' + fmt0(d.combined.total_excl_vat) + ' kr</span></div>' +
           '<div class="t-row"><span>Orders</span><span>' + fmt0(d.woocommerce.order_count) + '</span></div>';
@@ -333,7 +336,7 @@
   function renderTable(days){
     var tbody = document.querySelector('#historyTable tbody');
     tbody.innerHTML = days.slice().reverse().map(function(d){
-      return '<tr><td>' + d.date + '</td><td>' + fmt0(d.woocommerce.order_count) + '</td>' +
+      return '<tr><td>' + fmtDateIS(d.date) + '</td><td>' + fmt0(d.woocommerce.order_count) + '</td>' +
         '<td>' + fmt0(d.combined.total_excl_vat) + ' kr</td>' +
         '<td>' + fmt0(d.combined.total_vat) + ' kr</td>' +
         '<td>' + fmt0(d.combined.total_incl_vat) + ' kr</td></tr>';

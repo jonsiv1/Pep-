@@ -74,19 +74,44 @@ def pct_change(current, previous):
     return round(((current - previous) / previous) * 100, 1)
 
 
-# Email-safe palette: warm paper background, dark ink, one pizza-oven accent.
+# Email-safe palette: warm paper, dark ink, one deep-red accent used sparingly.
 INK = "#221C16"
 INK_SOFT = "#6E635A"
 INK_FAINT = "#9C9186"
-PAPER = "#F2EDE6"
-CARD = "#FFFFFF"
-LINE = "#E7DFD4"
-ACCENT = "#B3401F"       # pizza-oven red, dark enough for white text on top
-ACCENT_DEEP = "#8F3010"
-GOOD = "#1a7f37"
-BAD = "#cf222e"
+PAPER = "#EFEBE4"
+SHEET = "#FFFFFF"
+LINE = "#E3DCD1"
+LINE_STRONG = "#C9BFB0"
+ACCENT = "#8F3010"
+GOOD = "#1a6b32"
+BAD = "#b3261e"
 
-FONT = "font-family:Arial,Helvetica,sans-serif;"
+SANS = "font-family:Arial,Helvetica,sans-serif;"
+SERIF = "font-family:Georgia,'Times New Roman',serif;"
+
+# Icelandic names hardcoded - the CI runner has no is_IS locale installed.
+IS_WEEKDAYS = ["mánudagur", "þriðjudagur", "miðvikudagur", "fimmtudagur",
+               "föstudagur", "laugardagur", "sunnudagur"]
+IS_MONTHS = ["janúar", "febrúar", "mars", "apríl", "maí", "júní", "júlí",
+             "ágúst", "september", "október", "nóvember", "desember"]
+
+
+def isk(n):
+    """Icelandic number format: period as thousands separator, 'kr.' suffix."""
+    return f"{n:,.0f}".replace(",", ".") + " kr."
+
+
+def is_pct(p):
+    """Icelandic decimal comma: 12,3%"""
+    return f"{abs(p):.1f}".replace(".", ",") + "%"
+
+
+def is_date_long(dt):
+    return f"{IS_WEEKDAYS[dt.weekday()].capitalize()}, {dt.day}. {IS_MONTHS[dt.month - 1]} {dt.year}"
+
+
+def is_date_short(dt):
+    return dt.strftime("%d.%m.%Y")
 
 
 def _pizzas_qty(day_record):
@@ -95,25 +120,24 @@ def _pizzas_qty(day_record):
     return day_record["combined"]["categories"].get("Pizzas", {}).get("qty")
 
 
-def _chip(label, pct):
-    """Small pill showing a % change vs a named period."""
+def _trend(label, pct):
     if pct is None:
-        return (f"<span style='display:inline-block;background:{PAPER};color:{INK_FAINT};"
-                f"border-radius:12px;padding:4px 12px;font-size:12px;{FONT}'>{label}: no data</span>")
+        return (f"<span style='color:{INK_FAINT};font-size:13px;{SANS}'>"
+                f"{label}: no data</span>")
     color = GOOD if pct >= 0 else BAD
-    arrow = "&#9650;" if pct >= 0 else "&#9660;"
-    return (f"<span style='display:inline-block;background:{PAPER};color:{color};font-weight:bold;"
-            f"border-radius:12px;padding:4px 12px;font-size:12px;{FONT}'>"
-            f"{arrow} {abs(pct)}% <span style='color:{INK_FAINT};font-weight:normal'>{label}</span></span>")
+    sign = "+" if pct >= 0 else "&#8722;"
+    return (f"<span style='font-size:13px;{SANS}'>"
+            f"<span style='color:{color};font-weight:bold;'>{sign}{is_pct(pct)}</span>"
+            f"<span style='color:{INK_SOFT};'> {label}</span></span>")
 
 
 def render_email_html(date_str, wc, dineout, combined, history, items):
     dt = datetime.strptime(date_str, "%Y-%m-%d")
-    nice_date = f"{dt:%A} {dt.day}. {dt:%B %Y}"
     yesterday = (dt - timedelta(days=1)).strftime("%Y-%m-%d")
     last_week = (dt - timedelta(days=7)).strftime("%Y-%m-%d")
     prev_day = find_day(history, yesterday)
     prev_week = find_day(history, last_week)
+    weekday_en = dt.strftime("%A")
 
     vs_yesterday = pct_change(combined["total_incl_vat"], prev_day["combined"]["total_incl_vat"]) if prev_day else None
     vs_last_week = pct_change(combined["total_incl_vat"], prev_week["combined"]["total_incl_vat"]) if prev_week else None
@@ -121,39 +145,34 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
     pizzas = combined["categories"].get("Pizzas", {}).get("qty", 0)
     pizzas_last_week = _pizzas_qty(prev_week)
     pizzas_vs_week = pct_change(pizzas, pizzas_last_week) if pizzas_last_week else None
-    if pizzas_vs_week is not None:
-        pz_color = "#C9E5C9" if pizzas_vs_week >= 0 else "#F5C6BC"
-        pz_arrow = "&#9650;" if pizzas_vs_week >= 0 else "&#9660;"
-        pizza_delta = (f"<div style='color:{pz_color};font-size:13px;padding-top:6px;{FONT}'>"
-                       f"{pz_arrow} {abs(pizzas_vs_week)}% vs. last {dt:%A}</div>")
-    else:
-        pizza_delta = ""
+
+    label_style = f"color:{INK_FAINT};font-size:11px;letter-spacing:2px;font-weight:bold;{SANS}"
+    th = f"padding:0 0 8px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{SANS}"
+    td = f"padding:8px 0;border-top:1px solid {LINE};font-size:14px;{SANS}"
 
     category_rows = "".join(
         f"<tr>"
-        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-size:14px;{FONT}'>{name}</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['qty']}</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['excl_vat']:,.0f}</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['vat']:,.0f}</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-weight:bold;font-size:14px;{FONT}'>{vals['incl_vat']:,.0f}</td>"
+        f"<td style='{td}color:{INK};'>{name}</td>"
+        f"<td align='right' style='{td}color:{INK_SOFT};'>{vals['qty']}</td>"
+        f"<td align='right' style='{td}color:{INK_SOFT};'>{isk(vals['excl_vat'])}</td>"
+        f"<td align='right' style='{td}color:{INK_SOFT};'>{isk(vals['vat'])}</td>"
+        f"<td align='right' style='{td}color:{INK};font-weight:bold;'>{isk(vals['incl_vat'])}</td>"
         f"</tr>"
         for name, vals in sorted(combined["categories"].items(), key=lambda kv: -kv[1]["incl_vat"])
     )
 
     item_rows = "".join(
         f"<tr>"
-        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK_FAINT};font-size:14px;width:24px;{FONT}'>{rank}</td>"
-        f"<td style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-size:14px;{FONT}'>{name}</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK_SOFT};font-size:14px;{FONT}'>{vals['qty']}&#215;</td>"
-        f"<td align='right' style='padding:9px 0;border-top:1px solid {LINE};color:{INK};font-weight:bold;font-size:14px;{FONT}'>{vals['incl_vat']:,.0f} kr</td>"
+        f"<td style='{td}color:{INK_FAINT};width:26px;'>{rank}.</td>"
+        f"<td style='{td}color:{INK};'>{name}</td>"
+        f"<td align='right' style='{td}color:{INK_SOFT};'>{vals['qty']} stk.</td>"
+        f"<td align='right' style='{td}color:{INK};font-weight:bold;'>{isk(vals['incl_vat'])}</td>"
         f"</tr>"
         for rank, (name, vals) in enumerate(items, start=1)
     )
 
-    card_open = (f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
-                 f"style='background:{CARD};border-radius:14px;'><tr><td style='padding:22px 26px;'>")
-    card_close = "</td></tr></table>"
-    gap = "<div style='height:14px;line-height:14px;'>&nbsp;</div>"
+    rule = f"<div style='border-top:1px solid {LINE_STRONG};font-size:0;line-height:0;'>&nbsp;</div>"
+    section_pad = "padding:26px 34px;"
 
     return f"""<!DOCTYPE html>
 <html>
@@ -164,92 +183,79 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 </head>
 <body style="margin:0;padding:0;background:{PAPER};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PAPER};">
-<tr><td align="center" style="padding:28px 14px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+<tr><td align="center" style="padding:32px 14px;">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0"
+       style="max-width:640px;width:100%;background:{SHEET};border:1px solid {LINE_STRONG};">
 
-  <tr><td style="padding:0 6px 16px;">
-    <div style="color:{ACCENT};font-size:12px;letter-spacing:3px;font-weight:bold;{FONT}">ASKUR TAPROOM &amp; PIZZERIA</div>
-    <div style="color:{INK};font-size:24px;font-weight:bold;padding-top:4px;{FONT}">Daily sales report</div>
-    <div style="color:{INK_SOFT};font-size:14px;padding-top:2px;{FONT}">{nice_date}</div>
+  <tr><td style="{section_pad}padding-bottom:20px;border-bottom:3px double {INK};">
+    <div style="color:{ACCENT};font-size:12px;letter-spacing:3px;font-weight:bold;{SANS}">ASKUR TAPROOM &amp; PIZZERIA</div>
+    <div style="color:{INK};font-size:27px;padding-top:6px;{SERIF}">Daily sales report</div>
+    <div style="color:{INK_SOFT};font-size:14px;padding-top:3px;{SANS}">{is_date_long(dt)}</div>
   </td></tr>
 
-  <tr><td>
-    {card_open}
-      <div align="center" style="text-align:center;">
-        <div style="color:{INK_FAINT};font-size:12px;letter-spacing:2px;font-weight:bold;{FONT}">TOTAL SALES</div>
-        <div style="color:{INK};font-size:48px;font-weight:bold;line-height:1.1;padding:10px 0 4px;{FONT}">{combined['total_incl_vat']:,.0f} kr</div>
-        <div style="color:{INK_SOFT};font-size:13px;padding-bottom:14px;{FONT}">
-          {combined['total_excl_vat']:,.0f} kr excl. VAT &nbsp;&#183;&nbsp; {combined['total_vat']:,.0f} kr VAT
-        </div>
-        <div>{_chip("vs. yesterday", vs_yesterday)} &nbsp; {_chip("vs. last " + f"{dt:%A}", vs_last_week)}</div>
-      </div>
-    {card_close}
+  <tr><td style="{section_pad}">
+    <div style="{label_style}">TOTAL SALES</div>
+    <div style="color:{INK};font-size:46px;line-height:1.1;padding:8px 0 5px;{SERIF}">{isk(combined['total_incl_vat'])}</div>
+    <div style="color:{INK_SOFT};font-size:13px;padding-bottom:10px;{SANS}">
+      {isk(combined['total_excl_vat'])} excl. VAT &nbsp;&#183;&nbsp; {isk(combined['total_vat'])} VAT
+    </div>
+    <div>{_trend("vs. yesterday", vs_yesterday)} &nbsp;&nbsp;&nbsp; {_trend(f"vs. last {weekday_en}", vs_last_week)}</div>
   </td></tr>
 
-  <tr><td>{gap}</td></tr>
+  <tr><td style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{ACCENT};border-radius:14px;">
-      <tr><td style="padding:20px 26px;" align="center">
-        <div style="color:#F5D9CE;font-size:12px;letter-spacing:2px;font-weight:bold;{FONT}">&#127829; PIZZAS SOLD</div>
-        <div style="color:#FFFFFF;font-size:40px;font-weight:bold;line-height:1.1;padding-top:6px;{FONT}">{pizzas}</div>
-        {pizza_delta}
-      </td></tr>
+  <tr><td style="{section_pad}">
+    <div style="{label_style}">PIZZAS SOLD</div>
+    <div style="color:{ACCENT};font-size:40px;line-height:1.1;padding:8px 0 5px;{SERIF}">{pizzas}</div>
+    <div>{_trend(f"vs. last {weekday_en}", pizzas_vs_week)}</div>
+  </td></tr>
+
+  <tr><td style="padding:0 34px;">{rule}</td></tr>
+
+  <tr><td style="{section_pad}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="50%" style="border-right:1px solid {LINE};padding-right:18px;">
+          <div style="{label_style}">RESTAURANT (DINEOUT)</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;{SERIF}">{isk(dineout['total_incl_vat'])}</div>
+          <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
+        </td>
+        <td width="50%" style="padding-left:18px;">
+          <div style="{label_style}">WEBSHOP</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;{SERIF}">{isk(wc['total_incl_vat'])}</div>
+          <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{wc['order_count']} orders</div>
+        </td>
+      </tr>
     </table>
   </td></tr>
 
-  <tr><td>{gap}</td></tr>
+  <tr><td style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td>
-    {card_open}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td width="50%" style="border-right:1px solid {LINE};padding-right:16px;">
-            <div style="color:{INK_FAINT};font-size:12px;letter-spacing:1px;font-weight:bold;{FONT}">RESTAURANT (DINEOUT)</div>
-            <div style="color:{INK};font-size:22px;font-weight:bold;padding-top:4px;{FONT}">{dineout['total_incl_vat']:,.0f} kr</div>
-            <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{FONT}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
-          </td>
-          <td width="50%" style="padding-left:16px;">
-            <div style="color:{INK_FAINT};font-size:12px;letter-spacing:1px;font-weight:bold;{FONT}">WEBSHOP</div>
-            <div style="color:{INK};font-size:22px;font-weight:bold;padding-top:4px;{FONT}">{wc['total_incl_vat']:,.0f} kr</div>
-            <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{FONT}">{wc['order_count']} orders</div>
-          </td>
-        </tr>
-      </table>
-    {card_close}
+  <tr><td style="{section_pad}">
+    <div style="color:{INK};font-size:18px;padding-bottom:14px;{SERIF}">By category</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="{th}">CATEGORY</td>
+        <td align="right" style="{th}">QTY</td>
+        <td align="right" style="{th}">EXCL. VAT</td>
+        <td align="right" style="{th}">VAT</td>
+        <td align="right" style="{th}">INCL. VAT</td>
+      </tr>
+      {category_rows}
+    </table>
   </td></tr>
 
-  <tr><td>{gap}</td></tr>
+  <tr><td style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td>
-    {card_open}
-      <div style="color:{INK};font-size:16px;font-weight:bold;padding-bottom:12px;{FONT}">By category</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">CATEGORY</td>
-          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">QTY</td>
-          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">EXCL. VAT</td>
-          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">VAT</td>
-          <td align="right" style="padding-bottom:7px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{FONT}">INCL. VAT</td>
-        </tr>
-        {category_rows}
-      </table>
-    {card_close}
+  <tr><td style="{section_pad}">
+    <div style="color:{INK};font-size:18px;padding-bottom:14px;{SERIF}">Top sellers</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      {item_rows}
+    </table>
   </td></tr>
 
-  <tr><td>{gap}</td></tr>
-
-  <tr><td>
-    {card_open}
-      <div style="color:{INK};font-size:16px;font-weight:bold;padding-bottom:12px;{FONT}">Top sellers</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        {item_rows}
-      </table>
-    {card_close}
-  </td></tr>
-
-  <tr><td style="padding:20px 8px 0;">
-    <div style="color:{INK_FAINT};font-size:11px;line-height:1.5;{FONT}">
+  <tr><td style="{section_pad}padding-top:18px;border-top:1px solid {LINE_STRONG};">
+    <div style="color:{INK_FAINT};font-size:11px;line-height:1.5;{SANS}">
       Day totals use each system's real VAT figures where available; an 11% fallback applies where
       no tax was recorded (webshop orders, and category-level splits). Pizza modifiers/toppings are
       excluded from the category counts; sides, desserts, kids menu and buffets count as pizzas.
@@ -308,7 +314,8 @@ def run(date_str, send_report_email=True):
     if send_report_email:
         html = render_email_html(date_str, wc, dineout, combined, history, items)
         pizzas = combined["categories"].get("Pizzas", {}).get("qty", 0)
-        subject = f"\U0001F355 {date_str}: {combined['total_incl_vat']:,.0f} kr · {pizzas} pizzas"
+        day_short = is_date_short(datetime.strptime(date_str, "%Y-%m-%d"))
+        subject = f"Daily sales {day_short}: {isk(combined['total_incl_vat'])} · {pizzas} pizzas"
         send_email(subject, html)
 
 
