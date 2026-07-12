@@ -1,11 +1,11 @@
 {
-  "_comment": "login fields confirmed against real page HTML from a failed-run debug screenshot (the form is Material-UI: 'Email address'/'Password' are floating <label>s, not native placeholders, so they're matched by label text via get_by_label, not a placeholder CSS selector). The list_* fields are still best-effort from screenshots only, not real page source - may need adjusting after the next test run. There is a recaptcha-container on the login page; if login starts failing again after this fix, that's the next suspect (Google sometimes challenges datacenter/automated traffic).",
+  "_comment": "Login confirmed fully working end-to-end (2026-07-12): email/password fields (Material-UI floating labels, matched via get_by_label), submit button, and post-login landing page ('Live orders' - the POS live-order board, not a 'Reports' link, which isn't on this page). DineOut's fraud/security check ('Account Verification Needed', approved once via SMS) did not re-trigger on the next run, so it appears tied to something more persistent than a single session - worth revisiting if it starts blocking runs again. The settlements_list_url and its selectors below are still unverified against real page source.",
 
   "login_url": "https://partner.dineout.is",
   "username_label": "Email address",
   "password_label": "Password",
   "submit_selector": "[data-testid='login-form-submit-button']",
-  "login_success_selector": "text=Reports",
+  "login_success_selector": "text=Live orders",
 
   "settlements_list_url": "https://partner.dineout.is/pos/reports/settlements",
   "list_row_selector": "table tbody tr",
