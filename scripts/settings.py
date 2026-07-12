@@ -16,8 +16,7 @@ WOOCOMMERCE_URL = os.environ.get("WOOCOMMERCE_URL", "").rstrip("/")
 WOOCOMMERCE_CONSUMER_KEY = os.environ.get("WOOCOMMERCE_CONSUMER_KEY", "")
 WOOCOMMERCE_CONSUMER_SECRET = os.environ.get("WOOCOMMERCE_CONSUMER_SECRET", "")
 
-# --- DineOut ---
-DINEOUT_URL = os.environ.get("DINEOUT_URL", "")
+# --- DineOut --- (login URL isn't secret, it lives in config/dineout_selectors.json)
 DINEOUT_USERNAME = os.environ.get("DINEOUT_USERNAME", "")
 DINEOUT_PASSWORD = os.environ.get("DINEOUT_PASSWORD", "")
 

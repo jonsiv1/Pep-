@@ -1,19 +1,43 @@
-"""Log into the DineOut backend and scrape one day's sales report.
+"""Log into the DineOut backend, find the settlement(s) for one business day,
+download each one's PDF settlement report, and parse it.
 
-DineOut has no API - this drives a real headless browser against the
-web backend. Selectors are NOT hardcoded here; they live in
-config/dineout_selectors.json so they can be fixed without touching code
-once someone has looked at the real login/report pages.
+Why a PDF: DineOut has no API, and the settlement detail page turns out to
+render its report as a PDF inside the browser (not real page text) - so
+instead of screen-scraping a picture, we download the same PDF a human would
+and read its actual text.
+
+Why "business day" needs correction: DineOut files a settlement under the
+date/time its till was closed, not the date the sales happened. A shift that
+runs past midnight (weekends, holidays) gets timestamped in the early hours
+of the *next* calendar day. Any settlement closed before DINEOUT_CUTOFF_HOUR
+is attributed to the previous day instead - confirmed against real data from
+Askur Taproom & Pizzeria (see config/dineout_selectors.json).
 """
 import json
+import re
 import sys
+import tempfile
 from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
 
+import pdfplumber
 from playwright.sync_api import sync_playwright
 
 import settings
 
 SELECTORS_FILE = settings.REPO_ROOT / "config" / "dineout_selectors.json"
+
+# A settlement closed before this hour belongs to the previous business day.
+CUTOFF_HOUR = 6
+
+# Marks the row of three stat tiles ("Debit Sales | Total Vat | Total Sales")
+# at both the top of the report and its trailing recap. The trailing one is
+# our signal that the item table has ended.
+STAT_LINE = "Debit Sales Total Vat Total Sales"
+STAT_VALUES_RE = re.compile(r"^ISK\s([\d,]+)\s+ISK\s([\d,]+)\s+ISK\s([\d,]+)$")
+ITEM_LINE_RE = re.compile(r"^(.+?)\s+(\d+)\s+ISK\s([\d,]+)\s+ISK\s([\d,]+)\s+ISK\s([\d,]+)\s+ISK\s([\d,]+)$")
+CATEGORY_LINE_RE = re.compile(r"^(.+?)\s+ISK\s([\d,]+)$")
 
 
 def load_selectors():
@@ -21,19 +45,150 @@ def load_selectors():
         return json.load(f)
 
 
+def parse_isk(text):
+    return float(text.replace("ISK", "").replace(",", "").strip())
+
+
+def parse_list_amount(text):
+    """The settlements *list* page uses Icelandic formatting: '1.581.350 kr.'"""
+    cleaned = text.replace("kr", "").replace(".", "").replace(",", ".").strip()
+    cleaned = "".join(ch for ch in cleaned if ch.isdigit() or ch in ".-")
+    return float(cleaned) if cleaned else 0.0
+
+
+def business_date_for(created_date, created_time):
+    hour = int(created_time.split(":")[0])
+    d = datetime.strptime(created_date, "%Y-%m-%d").date()
+    if hour < CUTOFF_HOUR:
+        d -= timedelta(days=1)
+    return d.isoformat()
+
+
+def is_real_pizza(item_name):
+    """Menu pizzas are numbered ('1. Með allt á hreinu'); buffets count too
+    (confirmed with the restaurant). Everything else in the Pizzas category
+    (loose toppings, 'Skip X' modifiers) is a modifier, not a separate sale.
+    """
+    return bool(re.match(r"^\d+\.\s", item_name)) or item_name.startswith("Buffet")
+
+
+def parse_settlement_pdf(pdf_path, fallback_rate=0.11):
+    lines = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            lines.extend(l.strip() for l in text.split("\n") if l.strip())
+
+    total_vat = total_sales = None
+    for i, line in enumerate(lines):
+        if line == STAT_LINE:
+            m = STAT_VALUES_RE.match(lines[i + 1])
+            if m:
+                total_vat = parse_isk(m.group(2))
+                total_sales = parse_isk(m.group(3))
+            break
+
+    categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
+    items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
+    current_category = None
+    started = False
+    # Per-item VAT rate isn't in the PDF (only an aggregate for the whole
+    # settlement), so category/item splits use the same fallback rate as
+    # WooCommerce - this means category-level VAT won't tie out exactly to
+    # the settlement's real total_vat above, which uses the authoritative figure.
+
+    for line in lines:
+        if not started:
+            if line == "Debit":
+                started = True
+            continue
+        if line == STAT_LINE:
+            break
+        if line in ("Debit", "Credit"):
+            continue
+
+        m_item = ITEM_LINE_RE.match(line)
+        if m_item:
+            name, qty, _unit_price, _total_no_discount, _discount, total = m_item.groups()
+            if current_category == "Pizzas" and not is_real_pizza(name):
+                continue  # topping/modifier - money already in total_sales, just not attributed
+            qty = int(qty)
+            total = parse_isk(total)
+            items[name]["qty"] += qty
+            items[name]["incl_vat"] += total
+            categories[current_category]["qty"] += qty
+            categories[current_category]["incl_vat"] += total
+            continue
+
+        m_cat = CATEGORY_LINE_RE.match(line)
+        if m_cat:
+            current_category = m_cat.group(1).strip()
+            continue
+
+    for vals in categories.values():
+        vals["excl_vat"] = vals["incl_vat"] / (1 + fallback_rate)
+        vals["vat"] = vals["incl_vat"] - vals["excl_vat"]
+
+    return {
+        "total_incl_vat": total_sales or 0.0,
+        "total_vat": total_vat or 0.0,
+        "categories": dict(categories),
+        "items": dict(items),
+    }
+
+
+def find_settlements_for_day(page, sel, target_date):
+    """Paginate the settlements list, return [(created_date, created_time, open_href), ...]
+    for every settlement whose corrected business date matches target_date.
+    Rows are assumed newest-first, so we stop once we've paged past the target.
+    """
+    matches = []
+    page.goto(sel["settlements_list_url"])
+    page.wait_for_selector(sel["list_row_selector"], timeout=20000)
+
+    while True:
+        rows = page.query_selector_all(sel["list_row_selector"])
+        if not rows:
+            break
+
+        oldest_business_date_seen = None
+        for row in rows:
+            cells = row.query_selector_all(sel["list_cell_selector"])
+            created_date = cells[sel["list_col_created"]].inner_text().strip()
+            created_time = cells[sel["list_col_time"]].inner_text().strip()
+            link = row.query_selector(sel["list_open_link_selector"])
+            href = link.get_attribute("href") if link else None
+
+            bdate = business_date_for(created_date, created_time)
+            oldest_business_date_seen = bdate
+            if bdate == target_date and href:
+                matches.append(href)
+
+        if oldest_business_date_seen and oldest_business_date_seen < target_date:
+            break  # paged past the target date; rows only get older from here
+
+        next_button = page.query_selector(sel["list_next_page_selector"])
+        if not next_button or next_button.is_disabled():
+            break
+        next_button.click()
+        page.wait_for_timeout(1000)
+
+    return matches
+
+
 def scrape_day(date_str):
     sel = load_selectors()
     rules = settings.load_category_rules()
     fallback_rate = rules.get("vat_fallback_rate", 0.11)
-    exclude = set(rules.get("dineout_exclude") or [])
     merge_map = {}
     for dest, sources in (rules.get("dineout_merge_into") or {}).items():
         for src in sources:
             merge_map[src] = dest
 
-    with sync_playwright() as p:
+    with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        context = browser.new_context(accept_downloads=True)
+        page = context.new_page()
 
         page.goto(sel["login_url"])
         page.fill(sel["username_selector"], settings.DINEOUT_USERNAME)
@@ -41,49 +196,42 @@ def scrape_day(date_str):
         page.click(sel["submit_selector"])
         page.wait_for_selector(sel["login_success_selector"], timeout=15000)
 
-        report_url = sel["report_url_template"].format(date=date_str)
-        page.goto(report_url)
-        page.wait_for_selector(sel["report_table_selector"], timeout=15000)
+        settlement_hrefs = find_settlements_for_day(page, sel, date_str)
 
-        rows = page.query_selector_all(sel["report_row_selector"])
+        total_incl = total_vat = 0.0
         categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
         items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
-        total_incl = 0.0
 
-        for row in rows:
-            cat_name = row.query_selector(sel["row_category_selector"]).inner_text().strip()
-            item_name = row.query_selector(sel["row_item_selector"]).inner_text().strip()
-            qty_text = row.query_selector(sel["row_qty_selector"]).inner_text().strip()
-            amount_text = row.query_selector(sel["row_amount_incl_vat_selector"]).inner_text().strip()
+        for href in settlement_hrefs:
+            page.goto(href)
+            page.wait_for_selector(sel["download_button_selector"], timeout=20000)
+            with page.expect_download() as dl_info:
+                page.click(sel["download_button_selector"])
+            download = dl_info.value
+            pdf_path = Path(tmp) / download.suggested_filename
+            download.save_as(pdf_path)
 
-            qty = _parse_number(qty_text)
-            incl = _parse_number(amount_text)
-            excl = incl / (1 + fallback_rate)
-            vat = incl - excl
-
-            item_bucket = items[item_name]
-            item_bucket["qty"] += qty
-            item_bucket["incl_vat"] += incl
-            total_incl += incl
-
-            cat_name = merge_map.get(cat_name, cat_name)
-            if cat_name in exclude:
-                continue
-
-            bucket = categories[cat_name]
-            bucket["qty"] += qty
-            bucket["incl_vat"] += incl
-            bucket["excl_vat"] += excl
-            bucket["vat"] += vat
+            parsed = parse_settlement_pdf(pdf_path, fallback_rate=fallback_rate)
+            total_incl += parsed["total_incl_vat"]
+            total_vat += parsed["total_vat"]
+            for name, vals in parsed["categories"].items():
+                name = merge_map.get(name, name)
+                categories[name]["qty"] += vals["qty"]
+                categories[name]["incl_vat"] += vals["incl_vat"]
+                categories[name]["excl_vat"] += vals["excl_vat"]
+                categories[name]["vat"] += vals["vat"]
+            for name, vals in parsed["items"].items():
+                items[name]["qty"] += vals["qty"]
+                items[name]["incl_vat"] += vals["incl_vat"]
 
         browser.close()
 
-    total_excl = total_incl / (1 + fallback_rate)
-    total_vat = total_incl - total_excl
+    total_excl = total_incl - total_vat
 
     return {
         "date": date_str,
         "source": "dineout",
+        "settlement_count": len(settlement_hrefs),
         "total_incl_vat": round(total_incl, 2),
         "total_excl_vat": round(total_excl, 2),
         "total_vat": round(total_vat, 2),
@@ -96,12 +244,6 @@ def scrape_day(date_str):
             for name, vals in items.items()
         },
     }
-
-
-def _parse_number(text):
-    cleaned = text.replace("kr", "").replace(".", "").replace(",", ".").strip()
-    cleaned = "".join(ch for ch in cleaned if ch.isdigit() or ch == "." or ch == "-")
-    return float(cleaned) if cleaned else 0.0
 
 
 if __name__ == "__main__":

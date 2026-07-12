@@ -40,27 +40,47 @@ You'll also need your store's base URL (e.g. `https://yourrestaurant.is`).
 ### 2. DineOut credentials
 
 Since DineOut has no API, the scraper logs in with a real username/password
-via a headless browser. Use a dedicated login if DineOut supports creating
-one (least-privilege), otherwise your existing login works.
+via a headless browser, the same way a person would.
 
-**The scraper's selectors are placeholders** in
-`config/dineout_selectors.json` and will not work until they're pointed at
-the real backend. To fill them in:
+Here's how it actually works, confirmed against a real settlement from Askur
+Taproom & Pizzeria:
 
-1. Log into the DineOut backend in a normal browser
-2. Open DevTools (F12) on the login page → right-click the username field →
-   **Inspect** → note its CSS selector (id, name, or class); same for the
-   password field and the submit button
-3. Navigate to the daily sales report page → note the URL pattern (does it
-   take a date query param? a date picker you'd need to interact with?) and
-   the CSS selectors for the report table, its rows, and the category / item
-   / quantity / amount columns
-4. Update `config/dineout_selectors.json` with the real values (a PR/commit,
-   not a secret — there's nothing sensitive in selector names)
+- DineOut's "Settlements" list shows one row per till closing (Z-report),
+  not one row per calendar day. A shift that runs past midnight (weekends,
+  holidays) gets filed under the *next* morning's date. The scraper corrects
+  for this: any settlement closed before 06:00 is counted toward the
+  previous day (`CUTOFF_HOUR` in `scripts/dineout_scrape.py`).
+- Each settlement's detail page is actually a PDF viewer, not a normal
+  webpage — so instead of screen-scraping it, the scraper clicks the same
+  **Download** button a person would, then reads the real PDF file.
+- DineOut gives one accurate VAT total for the *whole settlement*, so the
+  day's overall total/VAT numbers are exact. It does not break VAT down by
+  category, so the category/item breakdown uses the same 11%-fallback
+  estimate as WooCommerce for that split only.
+- Toppings aren't a separate DineOut category — they're filed under
+  "Pizzas" alongside the real pizzas. The scraper tells them apart because
+  every real menu pizza is numbered ("1. Með allt á hreinu," "19.
+  Margarita"); anything in that category without a number, plus loose
+  add-ons and "Skip X" modifiers, is treated as a topping and left out of
+  the category breakdown (the revenue still counts in the day's total,
+  it's just not attributed to "Pizzas"). Items starting with "Buffet" count
+  as pizzas too, per how the restaurant wants them tracked.
+- One known quirk: adding up every individual item's price comes out
+  slightly *higher* than DineOut's official settlement total (roughly 1%
+  higher on the sample day tested) — DineOut appears to apply some kind of
+  blanket discount/voucher that isn't reflected in individual item prices.
+  The day's total/VAT use DineOut's official number either way; only the
+  category/item breakdown is built from menu prices and won't tie out to
+  the penny.
 
-I can do this myself if you share a couple of screenshots of the login page
-and the sales report page (with the URL bar visible), or the page's HTML
-source — then I'll fill in the real selectors and test the flow.
+**What's confirmed vs. still best-effort** in `config/dineout_selectors.json`:
+the login fields, the settlement list URL, and the PDF download flow are
+built from real data. The exact way settlement rows are found on the list
+page (`list_row_selector` etc.) is a reasonable best guess from screenshots,
+not real page source — it may need a small adjustment after the first real
+test run. Trigger the workflow manually once secrets are in place (see step
+4) and send me any error from the Action's log if it doesn't find rows
+correctly; I'll fix the selector.
 
 ### 3. Email (SMTP)
 
@@ -78,7 +98,6 @@ secret**. Add each of:
 | `WOOCOMMERCE_URL` | e.g. `https://yourrestaurant.is` |
 | `WOOCOMMERCE_CONSUMER_KEY` | from step 1 |
 | `WOOCOMMERCE_CONSUMER_SECRET` | from step 1 |
-| `DINEOUT_URL` | DineOut backend login URL |
 | `DINEOUT_USERNAME` | DineOut login username |
 | `DINEOUT_PASSWORD` | DineOut login password |
 | `SMTP_HOST` | e.g. `smtp.gmail.com` |
@@ -115,12 +134,20 @@ while for ~550 days.
 
 ## Assumptions baked in (adjust if wrong)
 
-- **VAT**: uses each source's real tax figures where recorded; falls back to
-  an assumed 11% VAT-inclusive price when no tax figure is present.
-- **Category rollup** (`config/categories.yaml`): DineOut's "Toppings"
-  category is excluded from the category breakdown (still counted in
-  totals); Sides, Desserts, and Baby Pizza are folded into "Pizzas". Edit
-  this file — no code changes needed — to adjust.
+- **VAT**: WooCommerce and DineOut's day-level totals use real tax figures
+  where available (DineOut always has one; WooCommerce falls back to an
+  assumed 11% VAT-inclusive price when no tax is recorded, which is the
+  normal case for this store). Category/item-level VAT is always the 11%
+  estimate for both sources, since neither exposes real tax per category.
+- **Category rollup** (`config/categories.yaml`): "Sides" and "Desserts"
+  are folded into "Pizzas" for DineOut. Edit this file — no code changes
+  needed — to change the merges.
+- **Pizza vs. topping** (DineOut only, `is_real_pizza()` in
+  `scripts/dineout_scrape.py`): numbered menu items and anything named
+  "Buffet…" count as pizzas; everything else filed under "Pizzas" (loose
+  toppings, "Skip X" modifiers) is left out of the breakdown.
+- **Past-midnight settlements** (DineOut only): a settlement closed before
+  06:00 counts toward the previous calendar day.
 - **"Sale" orders**: WooCommerce orders with status `completed` or
   `processing` count as sales; cancelled/refunded/failed/pending do not.
 - **Report window**: always "yesterday" in UTC, which equals Iceland time
@@ -132,12 +159,12 @@ while for ~550 days.
 scripts/
   settings.py           - central config (reads env vars)
   woocommerce_pull.py    - WooCommerce REST API client
-  dineout_scrape.py      - Playwright login + scrape (needs real selectors)
+  dineout_scrape.py      - Playwright login + settlement PDF download/parse
   build_report.py        - combines both, emails report, updates history.json
   backfill.py             - one-off historical backfill (no emails)
 config/
   categories.yaml         - category merge/exclude rules + VAT fallback rate
-  dineout_selectors.json  - CSS selectors for the DineOut scraper (placeholders)
+  dineout_selectors.json  - DineOut login/list/download selectors
 data/
   history.json             - append-only daily history, powers the dashboard
 dashboard/

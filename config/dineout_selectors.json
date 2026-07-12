@@ -1,18 +1,19 @@
 {
-  "_comment": "PLACEHOLDER selectors - these will not work until filled in from the real DineOut backend. Log into DineOut, open browser dev tools (F12), and update the CSS selectors below to match. See README.md 'Configuring the DineOut scraper' section.",
+  "_comment": "login + URL fields are confirmed against the real DineOut Partner backend. The list_* fields are best-effort (built from screenshots, not real page source) and may need adjusting after the first real test run - see REPORTING_README.md.",
 
-  "login_url": "https://REPLACE-ME.dineout.example/login",
-  "username_selector": "input[name='username']",
-  "password_selector": "input[name='password']",
-  "submit_selector": "button[type='submit']",
-  "login_success_selector": "body",
+  "login_url": "https://partner.dineout.is",
+  "username_selector": "input[placeholder='Email address']",
+  "password_selector": "input[placeholder='Password']",
+  "submit_selector": "button:has-text('Login')",
+  "login_success_selector": "text=Reports",
 
-  "report_url_template": "https://REPLACE-ME.dineout.example/reports/sales?date={date}",
+  "settlements_list_url": "https://partner.dineout.is/pos/reports/settlements",
+  "list_row_selector": "table tbody tr",
+  "list_cell_selector": "td",
+  "list_col_created": 0,
+  "list_col_time": 1,
+  "list_open_link_selector": "a:has-text('Open')",
+  "list_next_page_selector": "button:has-text('Next')",
 
-  "report_table_selector": "table.sales-report",
-  "report_row_selector": "table.sales-report tbody tr",
-  "row_category_selector": "td:nth-child(1)",
-  "row_item_selector": "td:nth-child(2)",
-  "row_qty_selector": "td:nth-child(3)",
-  "row_amount_incl_vat_selector": "td:nth-child(4)"
+  "download_button_selector": "button:has-text('Download')"
 }
