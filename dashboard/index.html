@@ -158,7 +158,12 @@
     return e;
   }
 
-  fetch('../data/history.json').then(function(r){ return r.json(); }).then(function(data){
+  // Two hosting layouts: GitHub Pages serves the whole repo (data lives at
+  // ../data/), Kinsta static hosting serves a built root (data lives at data/).
+  fetch('data/history.json')
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); })
+    .catch(function(){ return fetch('../data/history.json').then(function(r){ return r.json(); }); })
+    .then(function(data){
     var days = (data.daily || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
     if (!days.length) {
       document.querySelector('.wrap').innerHTML += '<div class="card"><div class="empty">No data yet. The first daily report will populate this dashboard.</div></div>';
