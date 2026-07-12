@@ -27,7 +27,6 @@ jobs:
       WOOCOMMERCE_URL: ${{ secrets.WOOCOMMERCE_URL }}
       WOOCOMMERCE_CONSUMER_KEY: ${{ secrets.WOOCOMMERCE_CONSUMER_KEY }}
       WOOCOMMERCE_CONSUMER_SECRET: ${{ secrets.WOOCOMMERCE_CONSUMER_SECRET }}
-      DINEOUT_URL: ${{ secrets.DINEOUT_URL }}
       DINEOUT_USERNAME: ${{ secrets.DINEOUT_USERNAME }}
       DINEOUT_PASSWORD: ${{ secrets.DINEOUT_PASSWORD }}
       SMTP_HOST: ${{ secrets.SMTP_HOST }}
@@ -57,6 +56,15 @@ jobs:
           else
             python build_report.py
           fi
+
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dineout-debug
+          path: dineout_debug/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Commit updated history
         run: |
