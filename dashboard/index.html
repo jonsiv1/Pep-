@@ -145,7 +145,9 @@
 <script>
 (function(){
   // Icelandic formats throughout: period as thousands separator, dd.mm.yyyy dates.
-  var fmt0 = function(n){ return Math.round(n).toLocaleString('is-IS'); };
+  // Manual grouping: toLocaleString('is-IS') silently falls back to comma
+  // separators in browsers without Icelandic locale data.
+  var fmt0 = function(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
   var fmtDateIS = function(iso){ var p = iso.split('-'); return p[2] + '.' + p[1] + '.' + p[0]; };
   var fmtDateShortIS = function(iso){ var p = iso.split('-'); return p[2] + '.' + p[1] + '.'; };
   var svgNS = 'http://www.w3.org/2000/svg';
