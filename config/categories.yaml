@@ -18,9 +18,17 @@ dineout_merge_into:
     - Sides
     - Desserts
 
-# WooCommerce category names are used as-is from the store. Add mappings here
-# too if you later want to consolidate WooCommerce categories the same way.
-woocommerce_merge_into: {}
+# WooCommerce uses Icelandic category names and a singular "Pizza" - unified
+# into the same "Pizzas" bucket as DineOut so the combined breakdown shows
+# one row per real category. Meðlæti (sides), Eftirréttir (desserts) and
+# Barnamatseðill (kids menu) fold into Pizzas per the restaurant's preference,
+# mirroring the DineOut treatment above.
+woocommerce_merge_into:
+  Pizzas:
+    - Pizza
+    - Meðlæti
+    - Eftirréttir
+    - Barnamatseðill
 
 woocommerce_exclude: []
 
