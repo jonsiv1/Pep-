@@ -57,8 +57,8 @@ jobs:
             python build_report.py
           fi
 
-      - name: Upload failure screenshot
-        if: failure()
+      - name: Upload debug screenshot
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dineout-debug

@@ -190,6 +190,13 @@ def find_settlements_for_day(page, sel, target_date):
         next_button.click()
         page.wait_for_timeout(1000)
 
+    if not matches:
+        # Found nothing for the target date - could be legitimate (no
+        # settlements that day) or a parsing mismatch (wrong column index,
+        # unexpected date format). Capture what the scraper actually saw so
+        # this doesn't fail silently.
+        _save_debug(page, "no_settlements_found")
+
     return matches
 
 
