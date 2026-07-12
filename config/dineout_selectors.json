@@ -1,19 +1,19 @@
 {
-  "_comment": "Login confirmed fully working end-to-end (2026-07-12): email/password fields (Material-UI floating labels, matched via get_by_label), submit button, and post-login landing page ('Live orders' - the POS live-order board, not a 'Reports' link, which isn't on this page). DineOut's fraud/security check ('Account Verification Needed', approved once via SMS) did not re-trigger on the next run, so it appears tied to something more persistent than a single session - worth revisiting if it starts blocking runs again. The settlements_list_url and its selectors below are still unverified against real page source.",
-
+  "_comment": "All selectors verified against the live backend (recon run 2026-07-12). The settlements list is MUI TablePagination: rows-per-page options 10/25/100, icon next-page button (aria-label), and pagination state RESETS after opening a settlement and going back. The app's API base is api.dineout.is; settlement PDFs are served from settlementreport/download/{id}/{locationId} with the session's bearer token - the backfill uses that directly.",
   "login_url": "https://partner.dineout.is",
   "username_label": "Email address",
   "password_label": "Password",
   "submit_selector": "[data-testid='login-form-submit-button']",
   "login_success_selector": "text=Live orders",
-
   "settlements_list_url": "https://partner.dineout.is/pos/reports/settlements",
   "list_row_selector": "table tbody tr",
   "list_cell_selector": "td",
   "list_col_created": 0,
   "list_col_time": 1,
   "list_open_link_selector": "button:has-text('Open')",
-  "list_next_page_selector": "button:has-text('Next')",
-
-  "download_button_selector": "button:has-text('Download')"
+  "list_next_page_selector": "button[aria-label='Go to next page']",
+  "download_button_selector": "button:has-text('Download')",
+  "rows_per_page_select": ".MuiTablePagination-select",
+  "rows_per_page_option_100": "li[role='option']:has-text('100')",
+  "displayed_rows_selector": ".MuiTablePagination-displayedRows"
 }

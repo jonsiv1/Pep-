@@ -222,67 +222,61 @@ def download_matching_settlements(page, sel, target_date, tmp_dir):
     return downloaded
 
 
-def scrape_day(date_str):
-    sel = load_selectors()
-    rules = settings.load_category_rules()
-    fallback_rate = rules.get("vat_fallback_rate", 0.11)
+def category_merge_map(rules):
     merge_map = {}
     for dest, sources in (rules.get("dineout_merge_into") or {}).items():
         for src in sources:
             merge_map[src] = dest
+    return merge_map
 
-    with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(accept_downloads=True)
-        page = context.new_page()
 
-        try:
-            # domcontentloaded (not the default "load") so we don't wait on
-            # trackers/polling that may never go idle; then wait specifically
-            # for the field we need, which is what actually matters here.
-            # The form is Material-UI: "Email address"/"Password" are floating
-            # <label>s, not native placeholders, so get_by_label (which
-            # resolves the label->input association) is used instead of a
-            # placeholder-based CSS selector, which never matched anything.
-            page.goto(sel["login_url"], wait_until="domcontentloaded")
-            email_field = page.get_by_label(sel["username_label"])
-            email_field.wait_for(state="visible", timeout=45000)
-            email_field.fill(settings.DINEOUT_USERNAME)
-            page.get_by_label(sel["password_label"]).fill(settings.DINEOUT_PASSWORD)
-            page.click(sel["submit_selector"])
-            page.wait_for_selector(sel["login_success_selector"], timeout=20000)
+def login(page, sel):
+    """Log into the DineOut Partner backend.
 
-            pdf_paths = download_matching_settlements(page, sel, date_str, tmp)
+    domcontentloaded (not the default "load") so we don't wait on
+    trackers/polling that may never go idle; then wait specifically for the
+    field we need, which is what actually matters here. The form is
+    Material-UI: "Email address"/"Password" are floating <label>s, not
+    native placeholders, so get_by_label (which resolves the label->input
+    association) is used instead of a placeholder-based CSS selector, which
+    never matched anything.
+    """
+    page.goto(sel["login_url"], wait_until="domcontentloaded")
+    email_field = page.get_by_label(sel["username_label"])
+    email_field.wait_for(state="visible", timeout=45000)
+    email_field.fill(settings.DINEOUT_USERNAME)
+    page.get_by_label(sel["password_label"]).fill(settings.DINEOUT_PASSWORD)
+    page.click(sel["submit_selector"])
+    page.wait_for_selector(sel["login_success_selector"], timeout=20000)
 
-            total_incl = total_vat = 0.0
-            categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
-            items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
 
-            for pdf_path in pdf_paths:
-                parsed = parse_settlement_pdf(pdf_path, fallback_rate=fallback_rate)
-                total_incl += parsed["total_incl_vat"]
-                total_vat += parsed["total_vat"]
-                for name, vals in parsed["categories"].items():
-                    name = merge_map.get(name, name)
-                    categories[name]["qty"] += vals["qty"]
-                    categories[name]["incl_vat"] += vals["incl_vat"]
-                    categories[name]["excl_vat"] += vals["excl_vat"]
-                    categories[name]["vat"] += vals["vat"]
-                for name, vals in parsed["items"].items():
-                    items[name]["qty"] += vals["qty"]
-                    items[name]["incl_vat"] += vals["incl_vat"]
-        except Exception:
-            _save_debug(page, "failure")
-            raise
-        finally:
-            browser.close()
+def build_day_report(date_str, parsed_settlements, merge_map, fallback_rate):
+    """Aggregate one business day's parsed settlement PDFs into the report
+    dict shape the rest of the pipeline (merge_reports, email, dashboard)
+    consumes."""
+    total_incl = total_vat = 0.0
+    categories = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0, "excl_vat": 0.0, "vat": 0.0})
+    items = defaultdict(lambda: {"qty": 0, "incl_vat": 0.0})
+
+    for parsed in parsed_settlements:
+        total_incl += parsed["total_incl_vat"]
+        total_vat += parsed["total_vat"]
+        for name, vals in parsed["categories"].items():
+            name = merge_map.get(name, name)
+            categories[name]["qty"] += vals["qty"]
+            categories[name]["incl_vat"] += vals["incl_vat"]
+            categories[name]["excl_vat"] += vals["excl_vat"]
+            categories[name]["vat"] += vals["vat"]
+        for name, vals in parsed["items"].items():
+            items[name]["qty"] += vals["qty"]
+            items[name]["incl_vat"] += vals["incl_vat"]
 
     total_excl = total_incl - total_vat
 
     return {
         "date": date_str,
         "source": "dineout",
-        "settlement_count": len(pdf_paths),
+        "settlement_count": len(parsed_settlements),
         "total_incl_vat": round(total_incl, 2),
         "total_excl_vat": round(total_excl, 2),
         "total_vat": round(total_vat, 2),
@@ -295,6 +289,30 @@ def scrape_day(date_str):
             for name, vals in items.items()
         },
     }
+
+
+def scrape_day(date_str):
+    sel = load_selectors()
+    rules = settings.load_category_rules()
+    fallback_rate = rules.get("vat_fallback_rate", 0.11)
+    merge_map = category_merge_map(rules)
+
+    with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(accept_downloads=True)
+        page = context.new_page()
+
+        try:
+            login(page, sel)
+            pdf_paths = download_matching_settlements(page, sel, date_str, tmp)
+            parsed = [parse_settlement_pdf(p_, fallback_rate=fallback_rate) for p_ in pdf_paths]
+        except Exception:
+            _save_debug(page, "failure")
+            raise
+        finally:
+            browser.close()
+
+    return build_day_report(date_str, parsed, merge_map, fallback_rate)
 
 
 if __name__ == "__main__":
