@@ -67,7 +67,9 @@ def extract_items(body):
 def map_item(item):
     sid = item.get("id")
     created = None
-    for key in ("createdAt", "created", "createdDate", "createdOn", "date"):
+    # "dateTime" is the real field name (confirmed from the first live run's
+    # error output); the rest are kept as fallbacks in case it ever changes.
+    for key in ("dateTime", "createdAt", "created", "createdDate", "createdOn", "date"):
         if item.get(key):
             created = item[key]
             break
