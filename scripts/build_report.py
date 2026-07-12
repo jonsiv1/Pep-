@@ -151,24 +151,27 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
     label_style = f"color:{INK_FAINT};font-size:11px;letter-spacing:2px;font-weight:bold;{SANS}"
     th = f"padding:0 0 8px;color:{INK_FAINT};font-size:11px;letter-spacing:1px;font-weight:bold;{SANS}"
     td = f"padding:8px 0;border-top:1px solid {LINE};font-size:14px;{SANS}"
+    # Amounts must never wrap mid-number on narrow phone screens; names may wrap.
+    num = "white-space:nowrap;"
 
+    # Three columns only: five columns of long kr. amounts collide on phones,
+    # and the per-category excl-VAT/VAT split is an 11% estimate anyway - the
+    # real VAT detail is in the day totals at the top.
     category_rows = "".join(
         f"<tr>"
         f"<td style='{td}color:{INK};'>{name}</td>"
-        f"<td align='right' style='{td}color:{INK_SOFT};'>{vals['qty']}</td>"
-        f"<td align='right' style='{td}color:{INK_SOFT};'>{isk(vals['excl_vat'])}</td>"
-        f"<td align='right' style='{td}color:{INK_SOFT};'>{isk(vals['vat'])}</td>"
-        f"<td align='right' style='{td}color:{INK};font-weight:bold;'>{isk(vals['incl_vat'])}</td>"
+        f"<td align='right' style='{td}{num}color:{INK_SOFT};padding-left:12px;'>{vals['qty']}</td>"
+        f"<td align='right' style='{td}{num}color:{INK};font-weight:bold;padding-left:12px;'>{isk(vals['incl_vat'])}</td>"
         f"</tr>"
         for name, vals in sorted(combined["categories"].items(), key=lambda kv: -kv[1]["incl_vat"])
     )
 
     item_rows = "".join(
         f"<tr>"
-        f"<td style='{td}color:{INK_FAINT};width:26px;'>{rank}.</td>"
+        f"<td style='{td}color:{INK_FAINT};width:22px;'>{rank}.</td>"
         f"<td style='{td}color:{INK};'>{name}</td>"
-        f"<td align='right' style='{td}color:{INK_SOFT};'>{vals['qty']} stk.</td>"
-        f"<td align='right' style='{td}color:{INK};font-weight:bold;'>{isk(vals['incl_vat'])}</td>"
+        f"<td align='right' style='{td}{num}color:{INK_SOFT};padding-left:12px;'>{vals['qty']} stk.</td>"
+        f"<td align='right' style='{td}{num}color:{INK};font-weight:bold;padding-left:12px;'>{isk(vals['incl_vat'])}</td>"
         f"</tr>"
         for rank, (name, vals) in enumerate(items, start=1)
     )
@@ -182,6 +185,11 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 <meta charset="utf-8">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
+<style>
+@media only screen and (max-width:480px) {{
+  .pad {{ padding-left:18px !important; padding-right:18px !important; }}
+}}
+</style>
 </head>
 <body style="margin:0;padding:0;background:{PAPER};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PAPER};">
@@ -189,74 +197,73 @@ def render_email_html(date_str, wc, dineout, combined, history, items):
 <table role="presentation" width="640" cellpadding="0" cellspacing="0"
        style="max-width:640px;width:100%;background:{SHEET};border:1px solid {LINE_STRONG};">
 
-  <tr><td style="{section_pad}padding-bottom:20px;border-bottom:3px double {INK};">
+  <tr><td class="pad" style="{section_pad}padding-bottom:20px;border-bottom:3px double {INK};">
     <div style="color:{ACCENT};font-size:12px;letter-spacing:3px;font-weight:bold;{SANS}">ASKUR TAPROOM &amp; PIZZERIA</div>
     <div style="color:{INK};font-size:27px;padding-top:6px;{DISPLAY}">Daily sales report</div>
     <div style="color:{INK_SOFT};font-size:14px;padding-top:3px;{SANS}">{is_date_long(dt)}</div>
   </td></tr>
 
-  <tr><td style="{section_pad}">
+  <tr><td class="pad" style="{section_pad}">
     <div style="{label_style}">TOTAL SALES</div>
     <div style="color:{INK};font-size:46px;line-height:1.1;padding:8px 0 5px;{DISPLAY}">{isk(combined['total_incl_vat'])}</div>
     <div style="color:{INK_SOFT};font-size:13px;padding-bottom:10px;{SANS}">
-      {isk(combined['total_excl_vat'])} excl. VAT &nbsp;&#183;&nbsp; {isk(combined['total_vat'])} VAT
+      <span style="white-space:nowrap;">{isk(combined['total_excl_vat'])} excl. VAT</span> &nbsp;&#183;&nbsp;
+      <span style="white-space:nowrap;">{isk(combined['total_vat'])} VAT</span>
     </div>
     <div>{_trend("vs. yesterday", vs_yesterday)} &nbsp;&nbsp;&nbsp; {_trend(f"vs. last {weekday_en}", vs_last_week)}</div>
   </td></tr>
 
-  <tr><td style="padding:0 34px;">{rule}</td></tr>
+  <tr><td class="pad" style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td style="{section_pad}">
+  <tr><td class="pad" style="{section_pad}">
     <div style="{label_style}">PIZZAS SOLD</div>
     <div style="color:{ACCENT};font-size:40px;line-height:1.1;padding:8px 0 5px;{DISPLAY}">{pizzas}</div>
     <div>{_trend(f"vs. last {weekday_en}", pizzas_vs_week)}</div>
   </td></tr>
 
-  <tr><td style="padding:0 34px;">{rule}</td></tr>
+  <tr><td class="pad" style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td style="{section_pad}">
+  <tr><td class="pad" style="{section_pad}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td width="50%" style="border-right:1px solid {LINE};padding-right:18px;">
           <div style="{label_style}">RESTAURANT (DINEOUT)</div>
-          <div style="color:{INK};font-size:21px;padding-top:6px;{DISPLAY}">{isk(dineout['total_incl_vat'])}</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;white-space:nowrap;{DISPLAY}">{isk(dineout['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{dineout.get('settlement_count', 0)} settlement{'s' if dineout.get('settlement_count', 0) != 1 else ''}</div>
         </td>
         <td width="50%" style="padding-left:18px;">
           <div style="{label_style}">WEBSHOP</div>
-          <div style="color:{INK};font-size:21px;padding-top:6px;{DISPLAY}">{isk(wc['total_incl_vat'])}</div>
+          <div style="color:{INK};font-size:21px;padding-top:6px;white-space:nowrap;{DISPLAY}">{isk(wc['total_incl_vat'])}</div>
           <div style="color:{INK_SOFT};font-size:12px;padding-top:2px;{SANS}">{wc['order_count']} orders</div>
         </td>
       </tr>
     </table>
   </td></tr>
 
-  <tr><td style="padding:0 34px;">{rule}</td></tr>
+  <tr><td class="pad" style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td style="{section_pad}">
+  <tr><td class="pad" style="{section_pad}">
     <div style="color:{INK};font-size:18px;padding-bottom:14px;{DISPLAY}">By category</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td style="{th}">CATEGORY</td>
-        <td align="right" style="{th}">QTY</td>
-        <td align="right" style="{th}">EXCL. VAT</td>
-        <td align="right" style="{th}">VAT</td>
-        <td align="right" style="{th}">INCL. VAT</td>
+        <td align="right" style="{th}white-space:nowrap;">QTY</td>
+        <td align="right" style="{th}white-space:nowrap;">SALES (INCL. VAT)</td>
       </tr>
       {category_rows}
     </table>
   </td></tr>
 
-  <tr><td style="padding:0 34px;">{rule}</td></tr>
+  <tr><td class="pad" style="padding:0 34px;">{rule}</td></tr>
 
-  <tr><td style="{section_pad}">
+  <tr><td class="pad" style="{section_pad}">
     <div style="color:{INK};font-size:18px;padding-bottom:14px;{DISPLAY}">Top sellers</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       {item_rows}
     </table>
   </td></tr>
 
-  <tr><td style="{section_pad}padding-top:18px;border-top:1px solid {LINE_STRONG};">
+  <tr><td class="pad" style="{section_pad}padding-top:18px;border-top:1px solid {LINE_STRONG};">
     <div style="color:{INK_FAINT};font-size:11px;line-height:1.5;{SANS}">
       Day totals use each system's real VAT figures where available; an 11% fallback applies where
       no tax was recorded (webshop orders, and category-level splits). Pizza modifiers/toppings are
