@@ -13,13 +13,11 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 # Shares the daily workflow's group so a backfill never races the daily
-# run on committing history.json or deploying Pages.
+# run when committing history.json.
 concurrency:
-  group: "pages"
+  group: "daily-sales-report"
   cancel-in-progress: false
 
 jobs:
@@ -72,19 +70,3 @@ jobs:
           git diff --cached --quiet || git commit -m "Backfill: ${{ github.event.inputs.start }}..${{ github.event.inputs.end || 'yesterday' }}"
           git pull --rebase origin main
           git push
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-  deploy:
-    needs: backfill
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
