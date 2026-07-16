@@ -13,11 +13,9 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
+  group: "daily-sales-report"
   cancel-in-progress: false
 
 jobs:
@@ -73,19 +71,3 @@ jobs:
           git add data/history.json
           git diff --cached --quiet || git commit -m "Daily report: $(date -u +%F)"
           git push
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-  deploy:
-    needs: report
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
